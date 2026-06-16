@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Transaction } from '../../types';
-import { colors, spacing } from '../../design/tokens';
+import { colors, spacing, radius } from '../../design/tokens';
 import { formatCurrency, formatDate } from '../../utils/formatting';
 
 interface CourtReportProps {
@@ -56,217 +56,181 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
     .sort((a, b) => b.amount - a.amount);
 
   return (
-    <div className="pb-32 pt-6" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh', paddingLeft: spacing.screenPadding, paddingRight: spacing.screenPadding }}>
-      {/* Header */}
-      <h1 style={{ fontSize: '30px', fontWeight: 800, color: colors['ink/primary'], margin: 0 }}>
-        Court report
-      </h1>
-      <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: '8px 0 24px 0' }}>
-        Ready to file with the court
-      </p>
-
-      {/* Period card */}
+    <div className="pb-32" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh' }}>
+      {/* Header with navy card */}
       <div
-        className="rounded-card p-5 mb-4 flex justify-between items-start"
-        style={{ backgroundColor: colors['surface/card'], border: `1px solid ${colors['border/hairline']}` }}
+        style={{
+          backgroundColor: colors['header/bg'],
+          borderRadius: `0 0 ${radius.hero}px ${radius.hero}px`,
+          padding: '22px 16px',
+          color: '#fff',
+          boxShadow: '0 12px 26px rgba(30, 58, 95, 0.24)',
+        }}
       >
-        <div>
-          <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
-            Reporting period
-          </p>
-          <p style={{ fontSize: '19px', fontWeight: 800, color: colors['ink/primary'], margin: '6px 0 0 0' }}>
-            {formatDate(new Date(startDate))} – {formatDate(new Date(endDate))}
-          </p>
+        <div style={{ fontSize: '13px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+          Court Accounting
         </div>
-        <button
-          onClick={() => setShowDatePicker(true)}
+        <div style={{ fontSize: '26px', fontWeight: 700, fontFamily: "'Source Serif 4', serif", color: '#fff', margin: 0 }}>
+          Statement of Account
+        </div>
+        <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.72)', marginTop: '4px', fontWeight: 600 }}>
+          Conservatorship of {accountName}
+        </div>
+      </div>
+
+      <div style={{ padding: '8px 16px 0' }}>
+
+        {/* Period indicator with horizontal rule */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 4px 14px' }}>
+          <div style={{ width: '28px', height: '3px', background: colors['brand/accent'], borderRadius: '2px' }} />
+          <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: colors['ink/muted'] }}>
+            {formatDate(new Date(startDate))} – {formatDate(new Date(endDate))}
+          </span>
+        </div>
+
+        {/* Period card with Change button */}
+        <div
           style={{
-            fontSize: '15px',
-            fontWeight: 700,
-            color: colors['brand/primary'],
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
+            backgroundColor: colors['surface/card'],
+            border: `1px solid ${colors['border/hairline']}`,
+            borderRadius: `${radius.card}px`,
+            padding: '18px 20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '14px',
           }}
         >
-          Change
+          <div>
+            <div style={{ fontSize: '14px', color: colors['ink/muted'], fontWeight: 600 }}>Reporting period</div>
+            <div style={{ fontSize: '19px', fontWeight: 800, color: colors['ink/primary'], marginTop: '2px' }}>
+              {formatDate(new Date(startDate))} – {formatDate(new Date(endDate))}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowDatePicker(true)}
+            style={{
+              fontSize: '15px',
+              fontWeight: 700,
+              color: colors['brand/primary'],
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Change
+          </button>
+        </div>
+
+        {/* Account summary */}
+        <div
+          style={{
+            backgroundColor: colors['surface/card'],
+            border: `1px solid ${colors['border/hairline']}`,
+            borderRadius: `${radius.card}px`,
+            overflow: 'hidden',
+            marginBottom: '14px',
+          }}
+        >
+          <div style={{ backgroundColor: colors['brand/tint'], padding: '12px 18px', fontFamily: "'Source Serif 4', serif", fontSize: '16px', fontWeight: 700, borderBottom: `1px solid ${colors['border/hairline']}` }}>
+            Summary
+          </div>
+          <div style={{ padding: '4px 18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
+              <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Opening balance</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>$25,440.55</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
+              <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Total disbursements</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(totalSpent)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
+              <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Income received</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(totalIncome)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0' }}>
+              <span style={{ fontSize: '17px', fontWeight: 800 }}>Closing balance</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>$12,480.55</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Disbursements by category */}
+        <div
+          style={{
+            backgroundColor: colors['surface/card'],
+            border: `1px solid ${colors['border/hairline']}`,
+            borderRadius: `${radius.card}px`,
+            overflow: 'hidden',
+            marginBottom: '16px',
+          }}
+        >
+          <div style={{ backgroundColor: colors['brand/tint'], padding: '12px 18px', fontFamily: "'Source Serif 4', serif", fontSize: '16px', fontWeight: 700, borderBottom: `1px solid ${colors['border/hairline']}` }}>
+            Disbursements by category
+          </div>
+          <div style={{ padding: '2px 18px' }}>
+            {categoryList.map(({ cat, amount, pct }) => {
+              const catColor = categoryColors[cat] || { bg: colors['brand/tint'], text: colors['brand/primary'], letter: '?' };
+              return (
+                <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700 }}>
+                    {cat} <span style={{ color: colors['ink/muted'], fontWeight: 600, fontSize: '14px' }}>· {Math.round(pct)}%</span>
+                  </span>
+                  <span style={{ fontSize: '16px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(amount)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <button
+          onClick={onGeneratePDF}
+          style={{
+            width: '100%',
+            height: '64px',
+            border: 'none',
+            borderRadius: `${radius.button}px`,
+            backgroundColor: colors['brand/primary'],
+            color: '#fff',
+            fontSize: '18px',
+            fontWeight: 800,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            marginBottom: '16px',
+          }}
+        >
+          Generate court PDF
         </button>
-      </div>
+        <button
+          onClick={onEmail}
+          style={{
+            width: '100%',
+            height: '58px',
+            border: `2px solid ${colors['border/btn-outline']}`,
+            borderRadius: `${radius.button}px`,
+            backgroundColor: colors['surface/card'],
+            color: colors['brand/primary'],
+            fontSize: '17px',
+            fontWeight: 800,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            marginBottom: '12px',
+          }}
+        >
+          Share with attorney
+        </button>
 
-      {/* Account summary card */}
-      <div
-        className="rounded-card p-5 mb-4"
-        style={{ backgroundColor: colors['surface/card'], border: `1px solid ${colors['border/hairline']}` }}
-      >
-        <h3 style={{ fontSize: '17px', fontWeight: 800, color: colors['ink/primary'], margin: 0 }}>
-          Account summary
-        </h3>
-        <div className="mt-4 space-y-3">
-          <div
-            className="flex justify-between py-3"
-            style={{ borderBottom: `1px solid ${colors['border/divider']}` }}
-          >
-            <p style={{ fontSize: '16px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
-              Opening balance
-            </p>
-            <p
-              style={{
-                fontSize: '17px',
-                fontWeight: 800,
-                color: colors['ink/primary'],
-                margin: 0,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              $25,440.55
-            </p>
-          </div>
-          <div
-            className="flex justify-between py-3"
-            style={{ borderBottom: `1px solid ${colors['border/divider']}` }}
-          >
-            <p style={{ fontSize: '16px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
-              Total spent
-            </p>
-            <p
-              style={{
-                fontSize: '17px',
-                fontWeight: 800,
-                color: colors['ink/primary'],
-                margin: 0,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {formatCurrency(totalSpent)}
-            </p>
-          </div>
-          <div className="flex justify-between py-3">
-            <p style={{ fontSize: '16px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
-              Closing balance
-            </p>
-            <p
-              style={{
-                fontSize: '18px',
-                fontWeight: 800,
-                color: colors['positive'],
-                margin: 0,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              $12,480.55
-            </p>
-          </div>
+        {/* Footnote */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 0 4px' }}>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: colors['brand/accent'] }} />
+          <span style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>
+            Prepared {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · 28 receipts attached
+          </span>
         </div>
+        <div style={{ height: '10px' }} />
       </div>
-
-      {/* Breakdown card */}
-      <div
-        className="rounded-card p-5 mb-6"
-        style={{ backgroundColor: colors['surface/card'], border: `1px solid ${colors['border/hairline']}` }}
-      >
-        <h3 style={{ fontSize: '17px', fontWeight: 800, color: colors['ink/primary'], margin: 0 }}>
-          Where the money went
-        </h3>
-        <div className="mt-4 space-y-5">
-          {categoryList.map(({ cat, amount, pct }) => {
-            const catColor = categoryColors[cat] || { bg: colors['brand/tint'], text: colors['brand/primary'], letter: '?' };
-            return (
-              <div key={cat}>
-                <div className="flex items-center gap-3 mb-2">
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '8px',
-                      backgroundColor: catColor.bg,
-                      color: catColor.text,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '16px',
-                    }}
-                  >
-                    {catColor.letter}
-                  </div>
-                  <div className="flex-1">
-                    <p style={{ fontSize: '16px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>
-                      {cat}
-                    </p>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: '16px',
-                      fontWeight: 800,
-                      color: colors['ink/primary'],
-                      margin: 0,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {formatCurrency(amount)}
-                  </p>
-                </div>
-                {/* Proportion bar */}
-                <div
-                  style={{
-                    height: '8px',
-                    borderRadius: '4px',
-                    backgroundColor: colors['border/hairline'],
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${pct}%`,
-                      backgroundColor: catColor.text,
-                    }}
-                  />
-                </div>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: colors['ink/muted'], margin: '4px 0 0 0' }}>
-                  {Math.round(pct)}%
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <button
-        onClick={onGeneratePDF}
-        className="w-full rounded-btn text-white font-bold mb-3"
-        style={{
-          backgroundColor: colors['brand/primary'],
-          height: '68px',
-          fontSize: '17px',
-          boxShadow: '0 6px 16px rgba(47, 98, 217, 0.28)',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        Create PDF report
-      </button>
-      <button
-        onClick={onEmail}
-        className="w-full rounded-btn font-bold mb-6"
-        style={{
-          backgroundColor: colors['surface/card'],
-          color: colors['brand/primary'],
-          height: '60px',
-          fontSize: '16px',
-          border: `2px solid ${colors['border/btn-outline']}`,
-          cursor: 'pointer',
-        }}
-      >
-        Email to my attorney
-      </button>
-
-      {/* Footnote */}
-      <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/disabled'], margin: '0', textAlign: 'center' }}>
-        Every expense includes its receipt and date.
-      </p>
 
       {/* Date Range Picker Modal */}
       {showDatePicker && (

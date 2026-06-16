@@ -202,12 +202,14 @@ export function LayoutDirectionA() {
       {activeTab === 'home' && currentAccount && (
         <Dashboard
           account={currentAccount}
+          accounts={accounts}
           userName={currentAccount.name.split(' ')[0] || 'Friend'}
           recentTransactions={transactions}
           onAddExpense={handleAddExpense}
           onScanReceipt={handleScanReceipt}
           onSettings={() => setActiveTab('settings')}
           onViewAll={() => setActiveTab('history')}
+          onAccountChange={setCurrentAccountId}
         />
       )}
 

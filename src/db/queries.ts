@@ -36,15 +36,14 @@ export async function createTransaction(transaction: Omit<Transaction, 'id'>) {
 }
 
 export async function getTransactions(accountId: number, startDate?: Date, endDate?: Date) {
-  const query = db.transactions.where('accountId').equals(accountId);
-
   if (startDate && endDate) {
-    return query
-      .filter(t => new Date(t.date) >= startDate && new Date(t.date) <= endDate)
+    return db.transactions
+      .where('[accountId+date]')
+      .between([accountId, startDate], [accountId, endDate], true, true)
       .toArray();
   }
 
-  return query.toArray();
+  return db.transactions.where('accountId').equals(accountId).toArray();
 }
 
 export async function getTransaction(id: number) {

@@ -107,15 +107,18 @@ export function AddExpenseModal({
           type: txType,
         });
       } else {
+        // Convert base64 data URL to Blob to save ~37% storage in IndexedDB
         const receipts = photoData
-          ? [
-              {
+          ? await (async () => {
+              const blob = await fetch(photoData).then(r => r.blob());
+              return [{
                 referenceNumber: `Receipt-${Date.now()}`,
                 fileName: `receipt_${Date.now()}.jpg`,
-                fileType: 'image/jpeg',
-                fileSize: photoData.length,
+                fileType: blob.type || 'image/jpeg',
+                fileSize: blob.size,
                 uploadedDate: new Date(),
-                data: photoData,
+                data: '',
+                blobData: blob,
                 originalText: ocrResult?.text ?? '',
                 extractedFields: {
                   vendor: ocrResult?.vendor,
@@ -123,8 +126,8 @@ export function AddExpenseModal({
                   date: ocrResult?.date,
                   items: ocrResult?.items,
                 },
-              },
-            ]
+              }];
+            })()
           : [];
 
         await createTransaction({

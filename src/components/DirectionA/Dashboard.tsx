@@ -5,22 +5,26 @@ import { formatCurrency, formatDate } from '../../utils/formatting';
 
 interface DashboardProps {
   account: Account | null;
+  accounts: Account[];
   userName: string;
   recentTransactions: Transaction[];
   onAddExpense: () => void;
   onScanReceipt: () => void;
   onSettings?: () => void;
   onViewAll?: () => void;
+  onAccountChange?: (id: number) => void;
 }
 
 export function Dashboard({
   account,
+  accounts,
   userName,
   recentTransactions,
   onAddExpense,
   onScanReceipt,
   onSettings,
   onViewAll,
+  onAccountChange,
 }: DashboardProps) {
   const spentThisMonth = recentTransactions
     .filter(tx => {
@@ -74,9 +78,35 @@ export function Dashboard({
               )}
             </div>
           </div>
-          <p style={{ fontSize: '19px', fontWeight: 600, fontFamily: "'Source Serif 4', serif", color: 'rgba(255,255,255,0.92)', margin: '0 0 14px 0' }}>
-            {account.name}
-          </p>
+          {accounts.length > 1 && onAccountChange ? (
+            <select
+              value={account.id}
+              onChange={e => onAccountChange(Number(e.target.value))}
+              style={{
+                fontSize: '17px',
+                fontWeight: 600,
+                fontFamily: "'Source Serif 4', serif",
+                color: 'rgba(255,255,255,0.92)',
+                backgroundColor: 'transparent',
+                border: 'none',
+                outline: 'none',
+                cursor: 'pointer',
+                margin: '0 0 14px 0',
+                padding: 0,
+                width: '100%',
+              }}
+            >
+              {accounts.map(a => (
+                <option key={a.id} value={a.id} style={{ color: '#000', backgroundColor: '#fff' }}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p style={{ fontSize: '19px', fontWeight: 600, fontFamily: "'Source Serif 4', serif", color: 'rgba(255,255,255,0.92)', margin: '0 0 14px 0' }}>
+              {account.name}
+            </p>
+          )}
           <p
             style={{
               fontSize: '42px',

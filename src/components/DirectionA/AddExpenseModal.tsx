@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Category } from '../../types';
-import { colors, spacing } from '../../design/tokens';
+import { colors, spacing, radius } from '../../design/tokens';
 import { createTransaction } from '../../db/queries';
 
 interface AddExpenseModalProps {
@@ -99,7 +99,7 @@ export function AddExpenseModal({ categories, accountId, photoData, onClose, onS
         }}
         onClick={e => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: '23px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '23px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginBottom: '24px', fontFamily: "'Source Serif 4', serif" }}>
           Add expense
         </h2>
 
@@ -216,15 +216,17 @@ export function AddExpenseModal({ categories, accountId, photoData, onClose, onS
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-btn font-bold"
               style={{
+                flex: 1,
                 backgroundColor: colors['surface/card'],
                 color: colors['brand/primary'],
                 height: '56px',
                 border: `2px solid ${colors['border/btn-outline']}`,
                 cursor: 'pointer',
                 fontSize: '16px',
-                fontWeight: 700,
+                fontWeight: 800,
+                borderRadius: `${radius.button}px`,
+                fontFamily: 'inherit',
               }}
             >
               Cancel
@@ -232,15 +234,18 @@ export function AddExpenseModal({ categories, accountId, photoData, onClose, onS
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 rounded-btn text-white font-bold"
               style={{
+                flex: 1,
                 backgroundColor: colors['brand/primary'],
+                color: '#fff',
                 height: '56px',
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: '16px',
-                fontWeight: 700,
+                fontWeight: 800,
                 opacity: loading ? 0.7 : 1,
+                borderRadius: `${radius.button}px`,
+                fontFamily: 'inherit',
               }}
             >
               {loading ? 'Saving...' : 'Save'}

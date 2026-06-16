@@ -4,6 +4,7 @@ import { getAccounts, getCategories, exportToJSON, initializeDB } from '../../db
 import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
+import { ReceiptsGallery } from '../DirectionA/ReceiptsGallery';
 import { BottomTabBar } from './BottomTabBar';
 import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
 import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
@@ -153,22 +154,11 @@ export function LayoutDirectionA() {
         <History accountName={currentAccount.name} transactions={transactions} />
       )}
 
-      {activeTab === 'receipts' && (
-        <div
-          style={{
-            paddingTop: '48px',
-            paddingLeft: '22px',
-            paddingRight: '22px',
-            paddingBottom: '200px',
-            color: colors['ink/muted'],
-            fontSize: '16px',
-          }}
-        >
-          <h2 style={{ fontSize: '30px', fontWeight: 800, color: colors['ink/primary'], margin: 0 }}>
-            Receipts
-          </h2>
-          <p style={{ marginTop: '24px' }}>Gallery of saved receipts (coming soon)</p>
-        </div>
+      {activeTab === 'receipts' && currentAccount && (
+        <ReceiptsGallery
+          accountName={currentAccount.name}
+          transactions={transactions}
+        />
       )}
 
       {activeTab === 'reports' && currentAccount && (

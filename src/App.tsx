@@ -1,8 +1,8 @@
-import { Layout } from './components/Layout/Layout'
+import { LayoutDirectionA } from './components/Layout/LayoutDirectionA'
 import './index.css'
 
 function App() {
-  return <Layout />
+  return <LayoutDirectionA />
 }
 
 export default App

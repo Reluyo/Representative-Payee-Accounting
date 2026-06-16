@@ -1,9 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-page: #F4F7FB;
+  --surface-card: #FFFFFF;
+  --ink-primary: #16263F;
+  --ink-muted: #5B6B82;
+  --ink-disabled: #8A98AC;
+  --brand-primary: #2F62D9;
+  --brand-tint: #E7EFFD;
+  --brand-tint-strong: #EEF3FB;
+  --border-hairline: #E3EAF4;
+  --border-divider: #EDF1F8;
+  --border-btn-outline: #CBD9F0;
+  --positive: #1F8A5B;
+  --warning: #B57E1F;
+  --warning-bg: #FFFBF2;
+}
+
 * {
   box-sizing: border-box;
+  font-family: 'Public Sans', system-ui, sans-serif;
 }
 
 html, body {
@@ -12,9 +32,8 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background-color: var(--bg-page);
+  color: var(--ink-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -23,3 +42,34 @@ body {
   width: 100%;
   min-height: 100vh;
 }
+
+/* Tabular numbers for amounts */
+.amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Utility classes for Direction A tokens */
+.text-ink-primary { color: var(--ink-primary); }
+.text-ink-muted { color: var(--ink-muted); }
+.text-ink-disabled { color: var(--ink-disabled); }
+.text-brand-primary { color: var(--brand-primary); }
+.text-positive { color: var(--positive); }
+.text-warning { color: var(--warning); }
+
+.bg-page { background-color: var(--bg-page); }
+.bg-card { background-color: var(--surface-card); }
+.bg-brand-tint { background-color: var(--brand-tint); }
+.bg-brand-tint-strong { background-color: var(--brand-tint-strong); }
+.bg-warning { background-color: var(--warning-bg); }
+
+.border-hairline { border: 1px solid var(--border-hairline); }
+.border-divider { border-bottom: 1px solid var(--border-divider); }
+
+.rounded-hero { border-radius: 24px; }
+.rounded-card { border-radius: 20px; }
+.rounded-btn { border-radius: 18px; }
+.rounded-tile { border-radius: 12px; }
+.rounded-pill { border-radius: 999px; }
+
+.shadow-card { box-shadow: 0 6px 20px rgba(22, 38, 63, 0.06); }
+.shadow-btn { box-shadow: 0 6px 16px rgba(47, 98, 217, 0.28); }

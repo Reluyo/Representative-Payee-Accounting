@@ -5,10 +5,13 @@ import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
 import { BottomTabBar } from './BottomTabBar';
-import { AccountSetup } from '../Accounts/AccountSetup';
+import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
+import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
+import { AccountSetupDirectionA } from '../Accounts/AccountSetupDirectionA';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useAutoBackup } from '../../hooks/useAutoBackup';
 import { BackupBanner } from '../UI/BackupBanner';
+import { colors } from '../../design/tokens';
 
 type Tab = 'home' | 'history' | 'receipts' | 'reports';
 
@@ -18,8 +21,10 @@ export function LayoutDirectionA() {
   const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(true);
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
 
-  const { transactions } = useTransactions(currentAccountId);
+  const { transactions, addTransaction } = useTransactions(currentAccountId);
   const { backupReady, pendingBackup, downloadBackup, dismissBanner } = useAutoBackup();
 
   useEffect(() => {
@@ -56,13 +61,17 @@ export function LayoutDirectionA() {
   };
 
   const handleAddExpense = () => {
-    // TODO: Open expense entry modal/form
-    console.log('Add expense');
+    setShowAddExpense(true);
   };
 
   const handleScanReceipt = () => {
-    // TODO: Open camera/receipt scanner
-    console.log('Scan receipt');
+    setShowCamera(true);
+  };
+
+  const handleCameraCapture = (photoData: string) => {
+    setShowCamera(false);
+    // TODO: Show the photo in the add expense form
+    console.log('Photo captured:', photoData);
   };
 
   const handleGeneratePDF = async () => {
@@ -83,14 +92,21 @@ export function LayoutDirectionA() {
   };
 
   const handleEmail = () => {
-    // TODO: Implement email functionality
     console.log('Email to attorney');
+  };
+
+  const handleExpenseSaved = async () => {
+    // Refresh transactions
+    const updatedAccounts = await getAccounts();
+    if (updatedAccounts.length > 0) {
+      setCurrentAccountId(updatedAccounts[0].id ?? null);
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#F4F7FB' }}>
-        <p style={{ color: '#5B6B82' }}>Loading...</p>
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: colors['bg/page'] }}>
+        <p style={{ color: colors['ink/muted'] }}>Loading...</p>
       </div>
     );
   }
@@ -98,11 +114,11 @@ export function LayoutDirectionA() {
   const currentAccount = accounts.find(a => a.id === currentAccountId);
 
   if (accounts.length === 0) {
-    return <AccountSetup onAccountCreated={handleAccountCreated} />;
+    return <AccountSetupDirectionA onAccountCreated={handleAccountCreated} />;
   }
 
   return (
-    <div style={{ backgroundColor: '#F4F7FB', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: colors['bg/page'], minHeight: '100vh', paddingBottom: '120px' }}>
       {/* Auto-backup banner */}
       {backupReady && pendingBackup && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, padding: '16px 22px' }}>
@@ -136,11 +152,13 @@ export function LayoutDirectionA() {
             paddingLeft: '22px',
             paddingRight: '22px',
             paddingBottom: '200px',
-            color: '#5B6B82',
+            color: colors['ink/muted'],
             fontSize: '16px',
           }}
         >
-          <h2 style={{ fontSize: '30px', fontWeight: 800, margin: 0 }}>Receipts</h2>
+          <h2 style={{ fontSize: '30px', fontWeight: 800, color: colors['ink/primary'], margin: 0 }}>
+            Receipts
+          </h2>
           <p style={{ marginTop: '24px' }}>Gallery of saved receipts (coming soon)</p>
         </div>
       )}
@@ -153,6 +171,18 @@ export function LayoutDirectionA() {
           onEmail={handleEmail}
         />
       )}
+
+      {/* Modals */}
+      {showAddExpense && (
+        <AddExpenseModal
+          categories={categories}
+          accountId={currentAccountId || 0}
+          onClose={() => setShowAddExpense(false)}
+          onSaved={handleExpenseSaved}
+        />
+      )}
+
+      {showCamera && <ScanReceiptCamera onCapture={handleCameraCapture} onCancel={() => setShowCamera(false)} />}
 
       {/* Bottom tab bar */}
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />

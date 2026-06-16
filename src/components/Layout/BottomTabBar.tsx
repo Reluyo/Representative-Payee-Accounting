@@ -25,9 +25,15 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 bg-white border-t"
-      style={{ borderColor: colors['border/hairline'], paddingBottom: '20px' }}
+      style={{
+        borderColor: colors['border/hairline'],
+        paddingBottom: '20px',
+        zIndex: 1000,
+        paddingTop: '10px',
+        borderTop: `1px solid ${colors['border/hairline']}`,
+      }}
     >
-      <div className="flex justify-around items-end max-w-2xl mx-auto px-2 pt-2">
+      <div className="flex justify-around items-end max-w-full mx-auto px-2">
         {(['home', 'history', 'receipts', 'reports'] as Tab[]).map(tab => (
           <button
             key={tab}
@@ -35,6 +41,9 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
             className="flex flex-col items-center gap-1 p-2 flex-1"
             style={{
               color: activeTab === tab ? colors['brand/primary'] : colors['ink/disabled'],
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
             }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

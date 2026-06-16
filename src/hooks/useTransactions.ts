@@ -17,6 +17,8 @@ export function useTransactions(accountId: number | null) {
     setLoading(true);
     try {
       const data = await getTransactions(accountId, startDate, endDate);
+      // Sort newest first
+      data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setTransactions(data);
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
@@ -29,33 +31,37 @@ export function useTransactions(accountId: number | null) {
     if (!accountId) return;
     try {
       const id = await createTransaction(transaction);
-      await fetchTransactions();
+      // Optimistic: prepend to state rather than full refetch
+      const newTx: Transaction = { ...transaction, id: id as number };
+      setTransactions(prev => [newTx, ...prev]);
       return id;
     } catch (error) {
       console.error('Failed to create transaction:', error);
       throw error;
     }
-  }, [accountId, fetchTransactions]);
+  }, [accountId]);
 
   const updateTx = useCallback(async (id: number, updates: Partial<Transaction>) => {
     try {
       await updateTransaction(id, updates);
-      await fetchTransactions();
+      setTransactions(prev =>
+        prev.map(tx => tx.id === id ? { ...tx, ...updates } : tx)
+      );
     } catch (error) {
       console.error('Failed to update transaction:', error);
       throw error;
     }
-  }, [fetchTransactions]);
+  }, []);
 
   const deleteTx = useCallback(async (id: number) => {
     try {
       await deleteTransaction(id);
-      await fetchTransactions();
+      setTransactions(prev => prev.filter(tx => tx.id !== id));
     } catch (error) {
       console.error('Failed to delete transaction:', error);
       throw error;
     }
-  }, [fetchTransactions]);
+  }, []);
 
   const addReceipt = useCallback(async (transactionId: number, receipt: Omit<Receipt, 'id'>) => {
     try {

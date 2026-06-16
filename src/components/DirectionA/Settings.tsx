@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { colors, spacing } from '../../design/tokens';
-import { exportToJSON, importFromJSON } from '../../db/queries';
+import { exportToJSON, importFromJSON, clearAllData } from '../../db/queries';
 
 interface SettingsProps {
   onDataImported: () => void;
@@ -33,19 +33,55 @@ export function Settings({ onDataImported }: SettingsProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const confirmed = window.confirm(
+      'Warning: Importing will ADD the backup data to your existing data. If you import a file that overlaps with current data, you may get duplicate entries.\n\nTo replace all data, choose "Clear & Replace" option below instead.\n\nContinue with merge import?'
+    );
+
+    if (!confirmed) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       await importFromJSON(data);
-      alert('✓ Data restored successfully');
+      alert('Data restored successfully.');
       onDataImported();
     } catch (error) {
       console.error('Import failed:', error);
       alert('Failed to import data. Please check the file format.');
     }
 
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleClearAndReplace = async () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const confirmed = window.confirm(
+        'WARNING: This will permanently delete ALL current data and replace it with the backup file. This cannot be undone.\n\nAre you absolutely sure?'
+      );
+      if (!confirmed) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        await clearAllData();
+        await importFromJSON(data);
+        alert('All data replaced successfully.');
+        onDataImported();
+      } catch (error) {
+        console.error('Replace failed:', error);
+        alert('Failed to replace data. Your original data may have been cleared. Please try again with a valid backup file.');
+      }
+    };
+    fileInput.click();
   };
 
   return (
@@ -58,7 +94,7 @@ export function Settings({ onDataImported }: SettingsProps) {
         Manage your data & preferences
       </p>
 
-      {/* Data Management Section */}
+      {/* Backup & Restore */}
       <div
         style={{
           backgroundColor: colors['surface/card'],
@@ -88,7 +124,7 @@ export function Settings({ onDataImported }: SettingsProps) {
             boxShadow: '0 6px 16px rgba(47, 98, 217, 0.28)',
           }}
         >
-          📥 Export Backup
+          Export Backup
         </button>
 
         <button
@@ -103,9 +139,27 @@ export function Settings({ onDataImported }: SettingsProps) {
             fontSize: '16px',
             fontWeight: 700,
             cursor: 'pointer',
+            marginBottom: '10px',
           }}
         >
-          📤 Restore from Backup
+          Merge from Backup
+        </button>
+
+        <button
+          onClick={handleClearAndReplace}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            backgroundColor: '#fef2f2',
+            color: '#dc2626',
+            border: `2px solid #fca5a5`,
+            borderRadius: '16px',
+            fontSize: '16px',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          Clear & Replace from Backup
         </button>
 
         <input
@@ -117,11 +171,11 @@ export function Settings({ onDataImported }: SettingsProps) {
         />
 
         <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '16px 0 0 0', textAlign: 'center' }}>
-          All data is stored on your device. Back up regularly.
+          All data is stored on your device. Export your backup regularly and save it to a cloud drive or email it to yourself.
         </p>
       </div>
 
-      {/* About Section */}
+      {/* About */}
       <div
         style={{
           backgroundColor: colors['surface/card'],

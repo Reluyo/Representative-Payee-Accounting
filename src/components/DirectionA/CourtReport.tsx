@@ -1,16 +1,16 @@
 import { useState } from 'react';
-import type { Transaction } from '../../types';
+import type { Account, Transaction } from '../../types';
 import { colors, spacing, radius } from '../../design/tokens';
 import { formatCurrency, formatDate } from '../../utils/formatting';
 
 interface CourtReportProps {
-  accountName: string;
+  account: Account;
   transactions: Transaction[];
-  onGeneratePDF: () => void;
-  onEmail: () => void;
+  onGeneratePDF: (startDate: Date, endDate: Date) => void;
+  onEmail: (startDate: Date, endDate: Date) => void;
 }
 
-export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail }: CourtReportProps) {
+export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: CourtReportProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -19,6 +19,9 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
     return date.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  // Temp state for the picker — only commit on "Apply"
+  const [tempStart, setTempStart] = useState(startDate);
+  const [tempEnd, setTempEnd] = useState(endDate);
 
   const filteredTransactions = transactions.filter(tx => {
     const txDate = new Date(tx.date);
@@ -28,36 +31,62 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
     return txDate >= start && txDate <= end;
   });
 
-  // Calculate summary
   const expenses = filteredTransactions.filter(tx => tx.type === 'expense');
   const income = filteredTransactions.filter(tx => tx.type === 'income');
 
   const totalSpent = expenses.reduce((sum, tx) => sum + tx.amount, 0);
   const totalIncome = income.reduce((sum, tx) => sum + tx.amount, 0);
 
-  // Group by category
+  // Compute opening balance by reversing the period's transactions from the current balance
+  const closingBalance = account.balance;
+  const openingBalance = closingBalance - totalIncome + totalSpent;
+
   const byCategory = expenses.reduce((acc, tx) => {
     if (!acc[tx.category]) acc[tx.category] = 0;
     acc[tx.category] += tx.amount;
     return acc;
   }, {} as Record<string, number>);
 
-  const categoryColors: Record<string, { bg: string; text: string; letter: string }> = {
-    'Medical/Healthcare': { bg: '#E7EFFD', text: '#2F62D9', letter: 'M' },
-    'Care Services': { bg: '#E2F2F1', text: '#2E8B8B', letter: 'C' },
-    'Food & Groceries': { bg: '#E6F4E9', text: '#2F8B45', letter: 'G' },
-    'Utilities': { bg: '#F7EEDD', text: '#B57E1F', letter: 'U' },
-    'Housing & Rent': { bg: '#ECEAF8', text: '#6A5AC0', letter: 'H' },
-    'Personal Care': { bg: '#F8E9EF', text: '#C45D7C', letter: 'P' },
+  const categoryList = Object.entries(byCategory)
+    .map(([cat, amount]) => ({ cat, amount, pct: totalSpent > 0 ? (amount / totalSpent) * 100 : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const receiptCount = filteredTransactions.filter(tx => tx.receipts && tx.receipts.length > 0).length;
+
+  const openPicker = () => {
+    setTempStart(startDate);
+    setTempEnd(endDate);
+    setShowDatePicker(true);
   };
 
-  const categoryList = Object.entries(byCategory)
-    .map(([cat, amount]) => ({ cat, amount, pct: (amount / totalSpent) * 100 }))
-    .sort((a, b) => b.amount - a.amount);
+  const applyDates = () => {
+    setStartDate(tempStart);
+    setEndDate(tempEnd);
+    setShowDatePicker(false);
+  };
+
+  const cancelPicker = () => {
+    // Discard temp changes
+    setShowDatePicker(false);
+  };
+
+  const handleGeneratePDF = () => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    onGeneratePDF(start, end);
+  };
+
+  const handleEmail = () => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    onEmail(start, end);
+  };
 
   return (
     <div className="pb-32" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh' }}>
-      {/* Header with navy card */}
+      {/* Header */}
       <div
         style={{
           backgroundColor: colors['header/bg'],
@@ -74,13 +103,13 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
           Statement of Account
         </div>
         <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.72)', marginTop: '4px', fontWeight: 600 }}>
-          Conservatorship of {accountName}
+          Conservatorship of {account.name}
         </div>
       </div>
 
       <div style={{ padding: '8px 16px 0' }}>
 
-        {/* Period indicator with horizontal rule */}
+        {/* Period indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 4px 14px' }}>
           <div style={{ width: '28px', height: '3px', background: colors['brand/accent'], borderRadius: '2px' }} />
           <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: colors['ink/muted'] }}>
@@ -88,7 +117,7 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
           </span>
         </div>
 
-        {/* Period card with Change button */}
+        {/* Period card */}
         <div
           style={{
             backgroundColor: colors['surface/card'],
@@ -108,7 +137,7 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
             </div>
           </div>
           <button
-            onClick={() => setShowDatePicker(true)}
+            onClick={openPicker}
             style={{
               fontSize: '15px',
               fontWeight: 700,
@@ -139,7 +168,7 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
           <div style={{ padding: '4px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
               <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Opening balance</span>
-              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>$25,440.55</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(openingBalance)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
               <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Total disbursements</span>
@@ -147,46 +176,51 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
               <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Income received</span>
-              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(totalIncome)}</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16a34a' }}>{formatCurrency(totalIncome)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0' }}>
               <span style={{ fontSize: '17px', fontWeight: 800 }}>Closing balance</span>
-              <span style={{ fontSize: '18px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>$12,480.55</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(closingBalance)}</span>
             </div>
           </div>
         </div>
 
         {/* Disbursements by category */}
-        <div
-          style={{
-            backgroundColor: colors['surface/card'],
-            border: `1px solid ${colors['border/hairline']}`,
-            borderRadius: `${radius.card}px`,
-            overflow: 'hidden',
-            marginBottom: '16px',
-          }}
-        >
-          <div style={{ backgroundColor: colors['brand/tint'], padding: '12px 18px', fontFamily: "'Source Serif 4', serif", fontSize: '16px', fontWeight: 700, borderBottom: `1px solid ${colors['border/hairline']}` }}>
-            Disbursements by category
-          </div>
-          <div style={{ padding: '2px 18px' }}>
-            {categoryList.map(({ cat, amount, pct }) => {
-              const catColor = categoryColors[cat] || { bg: colors['brand/tint'], text: colors['brand/primary'], letter: '?' };
-              return (
+        {categoryList.length > 0 && (
+          <div
+            style={{
+              backgroundColor: colors['surface/card'],
+              border: `1px solid ${colors['border/hairline']}`,
+              borderRadius: `${radius.card}px`,
+              overflow: 'hidden',
+              marginBottom: '16px',
+            }}
+          >
+            <div style={{ backgroundColor: colors['brand/tint'], padding: '12px 18px', fontFamily: "'Source Serif 4', serif", fontSize: '16px', fontWeight: 700, borderBottom: `1px solid ${colors['border/hairline']}` }}>
+              Disbursements by category
+            </div>
+            <div style={{ padding: '2px 18px' }}>
+              {categoryList.map(({ cat, amount, pct }) => (
                 <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
                   <span style={{ fontSize: '16px', fontWeight: 700 }}>
                     {cat} <span style={{ color: colors['ink/muted'], fontWeight: 600, fontSize: '14px' }}>· {Math.round(pct)}%</span>
                   </span>
                   <span style={{ fontSize: '16px', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(amount)}</span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {filteredTransactions.length === 0 && (
+          <div style={{ padding: '24px', textAlign: 'center', color: colors['ink/muted'], fontWeight: 600, fontSize: '15px' }}>
+            No transactions in this period.
+          </div>
+        )}
 
         {/* Action buttons */}
         <button
-          onClick={onGeneratePDF}
+          onClick={handleGeneratePDF}
           style={{
             width: '100%',
             height: '64px',
@@ -198,13 +232,13 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
             fontWeight: 800,
             fontFamily: 'inherit',
             cursor: 'pointer',
-            marginBottom: '16px',
+            marginBottom: '12px',
           }}
         >
           Generate court PDF
         </button>
         <button
-          onClick={onEmail}
+          onClick={handleEmail}
           style={{
             width: '100%',
             height: '58px',
@@ -226,7 +260,8 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 0 4px' }}>
           <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: colors['brand/accent'] }} />
           <span style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>
-            Prepared {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · 28 receipts attached
+            Prepared {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            {receiptCount > 0 ? ` · ${receiptCount} receipt${receiptCount !== 1 ? 's' : ''} attached` : ' · No receipts attached'}
           </span>
         </div>
         <div style={{ height: '10px' }} />
@@ -246,7 +281,7 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
             alignItems: 'flex-end',
             zIndex: 999,
           }}
-          onClick={() => setShowDatePicker(false)}
+          onClick={cancelPicker}
         >
           <div
             style={{
@@ -264,56 +299,64 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
               Select date range
             </h2>
 
-            <div className="space-y-4">
-              <div>
-                <label style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
-                  Start date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    border: `1px solid ${colors['border/hairline']}`,
-                    borderRadius: '12px',
-                    boxSizing: 'border-box',
-                    color: colors['ink/primary'],
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
-                  End date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    border: `1px solid ${colors['border/hairline']}`,
-                    borderRadius: '12px',
-                    boxSizing: 'border-box',
-                    color: colors['ink/primary'],
-                  }}
-                />
-              </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
+                Start date
+              </label>
+              <input
+                type="date"
+                value={tempStart}
+                onChange={e => setTempStart(e.target.value)}
+                style={{ width: '100%', padding: '12px', fontSize: '16px', fontWeight: 600, border: `1px solid ${colors['border/hairline']}`, borderRadius: '12px', boxSizing: 'border-box', color: colors['ink/primary'] }}
+              />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
+                End date
+              </label>
+              <input
+                type="date"
+                value={tempEnd}
+                onChange={e => setTempEnd(e.target.value)}
+                style={{ width: '100%', padding: '12px', fontSize: '16px', fontWeight: 600, border: `1px solid ${colors['border/hairline']}`, borderRadius: '12px', boxSizing: 'border-box', color: colors['ink/primary'] }}
+              />
+            </div>
+
+            {/* Quick presets */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              {[
+                { label: 'This year', start: `${new Date().getFullYear()}-01-01`, end: new Date().toISOString().split('T')[0] },
+                { label: 'Last month', start: (() => { const d = new Date(); d.setMonth(d.getMonth() - 1, 1); return d.toISOString().split('T')[0]; })(), end: (() => { const d = new Date(); d.setDate(0); return d.toISOString().split('T')[0]; })() },
+                { label: 'This month', start: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`, end: new Date().toISOString().split('T')[0] },
+              ].map(p => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => { setTempStart(p.start); setTempEnd(p.end); }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    border: `1px solid ${colors['border/btn-outline']}`,
+                    backgroundColor: colors['brand/tint'],
+                    color: colors['brand/primary'],
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
               <button
                 type="button"
-                onClick={() => setShowDatePicker(false)}
-                className="flex-1 rounded-btn font-bold"
+                onClick={cancelPicker}
                 style={{
+                  flex: 1,
                   backgroundColor: colors['surface/card'],
                   color: colors['brand/primary'],
                   height: '56px',
@@ -321,21 +364,26 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
                   cursor: 'pointer',
                   fontSize: '16px',
                   fontWeight: 700,
+                  borderRadius: `${radius.button}px`,
+                  fontFamily: 'inherit',
                 }}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => setShowDatePicker(false)}
-                className="flex-1 rounded-btn text-white font-bold"
+                onClick={applyDates}
                 style={{
+                  flex: 1,
                   backgroundColor: colors['brand/primary'],
+                  color: '#fff',
                   height: '56px',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '16px',
                   fontWeight: 700,
+                  borderRadius: `${radius.button}px`,
+                  fontFamily: 'inherit',
                 }}
               >
                 Apply

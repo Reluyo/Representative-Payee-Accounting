@@ -10,6 +10,7 @@ interface DashboardProps {
   onAddExpense: () => void;
   onScanReceipt: () => void;
   onSettings?: () => void;
+  onViewAll?: () => void;
 }
 
 export function Dashboard({
@@ -19,19 +20,8 @@ export function Dashboard({
   onAddExpense,
   onScanReceipt,
   onSettings,
+  onViewAll,
 }: DashboardProps) {
-  const categoryTile = (category: string) => {
-    const categoryMap: Record<string, { bg: string; text: string; letter: string }> = {
-      'Medical/Healthcare': { bg: '#E7EFFD', text: '#2F62D9', letter: 'M' },
-      'Care Services': { bg: '#E2F2F1', text: '#2E8B8B', letter: 'C' },
-      'Food & Groceries': { bg: '#E6F4E9', text: '#2F8B45', letter: 'G' },
-      'Utilities': { bg: '#F7EEDD', text: '#B57E1F', letter: 'U' },
-      'Housing & Rent': { bg: '#ECEAF8', text: '#6A5AC0', letter: 'H' },
-      'Personal Care': { bg: '#F8E9EF', text: '#C45D7C', letter: 'P' },
-    };
-    return categoryMap[category] || { bg: colors['brand/tint'], text: colors['brand/primary'], letter: '?' };
-  };
-
   const spentThisMonth = recentTransactions
     .filter(tx => {
       const now = new Date();
@@ -44,7 +34,7 @@ export function Dashboard({
 
   return (
     <div className="pb-32" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh' }}>
-      {/* Header with account info - Navy card style */}
+      {/* Header */}
       {account && (
         <div
           style={{
@@ -57,7 +47,32 @@ export function Dashboard({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: '14px' }}>
             <span>Steward</span>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Guardian · {userName}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                Guardian · {userName}
+              </span>
+              {onSettings && (
+                <button
+                  onClick={onSettings}
+                  style={{
+                    background: 'rgba(255,255,255,0.15)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontSize: '16px',
+                  }}
+                  aria-label="Settings"
+                >
+                  ⚙
+                </button>
+              )}
+            </div>
           </div>
           <p style={{ fontSize: '19px', fontWeight: 600, fontFamily: "'Source Serif 4', serif", color: 'rgba(255,255,255,0.92)', margin: '0 0 14px 0' }}>
             {account.name}
@@ -82,7 +97,7 @@ export function Dashboard({
         </div>
       )}
 
-      {/* Stat cards - Spent this month & Receipts on file */}
+      {/* Stat cards */}
       <div style={{ padding: '14px 16px', display: 'flex', gap: '12px' }}>
         <div
           style={{
@@ -120,7 +135,21 @@ export function Dashboard({
           <div style={{ fontSize: '21px', fontWeight: 700, fontFamily: "'Source Serif 4', serif", color: colors['ink/primary'], margin: 0 }}>
             Recent entries
           </div>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: colors['brand/primary'] }}>View all</div>
+          <button
+            onClick={onViewAll}
+            style={{
+              fontSize: '15px',
+              fontWeight: 700,
+              color: colors['brand/primary'],
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              fontFamily: 'inherit',
+            }}
+          >
+            View all
+          </button>
         </div>
 
         <div
@@ -132,56 +161,60 @@ export function Dashboard({
             marginBottom: '16px',
           }}
         >
-          {recentTransactions.slice(0, 4).map((tx, idx) => {
-            const hasReceipt = tx.receipts && tx.receipts.length > 0;
-            const txDate = new Date(tx.date);
-            const monthStr = txDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-            const dayStr = txDate.getDate().toString();
+          {recentTransactions.length === 0 ? (
+            <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>No entries yet</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '6px 0 0 0' }}>Add an expense or scan a receipt to get started</p>
+            </div>
+          ) : (
+            recentTransactions.slice(0, 4).map((tx, idx) => {
+              const hasReceipt = tx.receipts && tx.receipts.length > 0;
+              const txDate = new Date(tx.date);
+              const monthStr = txDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+              const dayStr = txDate.getDate().toString();
+              const isIncome = tx.type === 'income';
 
-            return (
-              <div key={tx.id}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '14px',
-                    padding: '15px 16px',
-                    borderBottom: idx === recentTransactions.slice(0, 4).length - 1 ? 'none' : `1px solid ${colors['border/divider']}`,
-                    backgroundColor: !hasReceipt ? colors['warning/bg'] : 'transparent',
-                    borderLeft: !hasReceipt ? `4px solid ${colors['warning']}` : 'none',
-                  }}
-                >
-                  {/* Date box */}
-                  <div style={{ textAlign: 'center', width: '40px', flexShrink: 0 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: colors['ink/muted'], textTransform: 'uppercase' }}>
-                      {monthStr}
+              return (
+                <div key={tx.id}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      padding: '15px 16px',
+                      borderBottom: idx === Math.min(recentTransactions.length, 4) - 1 ? 'none' : `1px solid ${colors['border/divider']}`,
+                      backgroundColor: !isIncome && !hasReceipt ? colors['warning/bg'] : 'transparent',
+                      borderLeft: !isIncome && !hasReceipt ? `4px solid ${colors['warning']}` : 'none',
+                    }}
+                  >
+                    <div style={{ textAlign: 'center', width: '40px', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: colors['ink/muted'], textTransform: 'uppercase' }}>
+                        {monthStr}
+                      </div>
+                      <div style={{ fontSize: '19px', fontWeight: 800, lineHeight: 1, color: colors['ink/primary'] }}>
+                        {dayStr}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '19px', fontWeight: 800, lineHeight: 1, color: colors['ink/primary'] }}>
-                      {dayStr}
-                    </div>
-                  </div>
 
-                  {/* Divider */}
-                  <div style={{ width: '1px', alignSelf: 'stretch', backgroundColor: colors['border/divider'] }} />
+                    <div style={{ width: '1px', alignSelf: 'stretch', backgroundColor: colors['border/divider'] }} />
 
-                  {/* Center: merchant and category */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>
-                      {tx.description}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>
+                        {tx.description}
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, margin: '1px 0 0 0', color: isIncome ? '#16a34a' : (hasReceipt ? colors['ink/muted'] : colors['warning']) }}>
+                        {isIncome ? 'Income' : `${tx.category} · ${hasReceipt ? 'Receipt on file' : 'Needs receipt'}`}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '13px', color: hasReceipt ? colors['ink/muted'] : colors['warning'], fontWeight: hasReceipt ? 600 : 700, margin: '1px 0 0 0' }}>
-                      {tx.category} · {hasReceipt ? 'Receipt on file' : 'Needs receipt'}
-                    </div>
-                  </div>
 
-                  {/* Right: amount */}
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: colors['ink/primary'], fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                    {formatCurrency(tx.amount)}
+                    <div style={{ fontSize: '18px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: isIncome ? '#16a34a' : colors['ink/primary'] }}>
+                      {isIncome ? '+' : ''}{formatCurrency(tx.amount)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Action buttons */}
@@ -201,7 +234,7 @@ export function Dashboard({
               cursor: 'pointer',
             }}
           >
-            Add expense
+            Add entry
           </button>
           <button
             onClick={onScanReceipt}

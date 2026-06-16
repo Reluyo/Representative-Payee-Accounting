@@ -9,9 +9,20 @@ export interface OCRResult {
   confidence: number;
 }
 
+// Persistent worker — avoids re-loading the 10MB language model on every scan
+let cachedWorker: Tesseract.Worker | null = null;
+
+async function getWorker(): Promise<Tesseract.Worker> {
+  if (!cachedWorker) {
+    cachedWorker = await Tesseract.createWorker('eng');
+  }
+  return cachedWorker;
+}
+
 export async function scanReceiptImage(imageData: string | Blob): Promise<OCRResult> {
   try {
-    const result = await Tesseract.recognize(imageData, 'eng');
+    const worker = await getWorker();
+    const result = await worker.recognize(imageData);
     const text = result.data.text;
     const confidence = result.data.confidence / 100;
 
@@ -38,10 +49,14 @@ function extractReceiptData(text: string): Partial<OCRResult> {
     data.vendor = vendorLine.trim();
   }
 
-  // Try to extract amount (look for currency patterns)
-  const amountMatch = text.match(/\$?\s?(\d+\.\d{2}|\d+)/);
-  if (amountMatch) {
-    data.amount = parseFloat(amountMatch[1]);
+  // Try to extract amount — prefer the largest dollar value (often the total)
+  const allAmounts = [...text.matchAll(/\$?\s?(\d+\.\d{2})/g)];
+  if (allAmounts.length > 0) {
+    const values = allAmounts.map(m => parseFloat(m[1]));
+    data.amount = Math.max(...values);
+  } else {
+    const simpleMatch = text.match(/\$?\s?(\d+)/);
+    if (simpleMatch) data.amount = parseFloat(simpleMatch[1]);
   }
 
   // Try to extract date (MM/DD/YYYY or MM-DD-YYYY patterns)

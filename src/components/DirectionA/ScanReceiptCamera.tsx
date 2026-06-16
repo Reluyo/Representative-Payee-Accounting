@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { colors } from '../../design/tokens';
+import { scanReceiptImage, type OCRResult } from '../../utils/ocr';
 
 interface ScanReceiptCameraProps {
-  onCapture: (photoData: string) => void;
+  onCapture: (photoData: string, ocrResult?: OCRResult) => void;
   onCancel: () => void;
 }
 
@@ -11,6 +12,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [error, setError] = useState('');
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -38,7 +40,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
     };
   }, []);
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     const context = canvasRef.current.getContext('2d');
@@ -49,7 +51,17 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
     context.drawImage(videoRef.current, 0, 0);
 
     const photoData = canvasRef.current.toDataURL('image/jpeg');
-    onCapture(photoData);
+
+    setScanning(true);
+    try {
+      const ocrResult = await scanReceiptImage(photoData);
+      onCapture(photoData, ocrResult);
+    } catch {
+      // If OCR fails, proceed with just the photo
+      onCapture(photoData);
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
@@ -108,7 +120,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
           fontWeight: 600,
         }}
       >
-        Hold steady — we'll snap it for you
+        {scanning ? 'Reading receipt...' : 'Hold steady — we\'ll snap it for you'}
       </div>
 
       {/* Camera feed */}
@@ -138,9 +150,25 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
                 height: '330px',
                 border: '2px solid white',
                 borderRadius: '8px',
-                opacity: 0.5,
+                opacity: scanning ? 1 : 0.5,
               }}
             />
+            {scanning && (
+              <div style={{
+                position: 'absolute',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                color: 'white',
+                padding: '8px 20px',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: 600,
+              }}>
+                Reading receipt...
+              </div>
+            )}
           </>
         ) : (
           <div style={{ textAlign: 'center' }}>
@@ -150,7 +178,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
       </div>
 
       {/* Bottom controls */}
-      {cameraActive && (
+      {cameraActive && !scanning && (
         <div
           style={{
             padding: '20px 22px 40px',
@@ -159,21 +187,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
             alignItems: 'center',
           }}
         >
-          <button
-            style={{
-              width: '58px',
-              height: '58px',
-              borderRadius: '14px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Photos
-          </button>
+          <div style={{ width: '58px' }} />
 
           <button
             onClick={handleCapture}
@@ -200,21 +214,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
             />
           </button>
 
-          <button
-            style={{
-              width: '58px',
-              height: '58px',
-              borderRadius: '14px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Type it
-          </button>
+          <div style={{ width: '58px' }} />
         </div>
       )}
 

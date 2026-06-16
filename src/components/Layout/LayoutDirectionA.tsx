@@ -34,7 +34,7 @@ export function LayoutDirectionA() {
   const { transactions, fetchTransactions, updateTransaction, deleteTransaction } = useTransactions(currentAccountId);
   const currentAccount = accounts.find(a => a.id === currentAccountId) ?? null;
   const { generateAndExportPDF, reportLoading } = useReports(currentAccountId, currentAccount?.name ?? '');
-  const { backupReady, pendingBackup, downloadBackup, dismissBanner } = useAutoBackup();
+  const { backupReady, pendingBackup, downloadBackup, dismissBanner, snoozeBanner } = useAutoBackup();
 
   useEffect(() => {
     const initialize = async () => {
@@ -184,6 +184,7 @@ export function LayoutDirectionA() {
             backup={pendingBackup}
             onDownload={downloadBackup}
             onDismiss={dismissBanner}
+            onSnooze={snoozeBanner}
           />
         </div>
       )}

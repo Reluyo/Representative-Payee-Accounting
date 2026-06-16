@@ -3,6 +3,7 @@ import { exportToJSON } from '../db/queries';
 
 const BACKUP_INTERVAL_DAYS = 30;
 const LAST_BACKUP_KEY = 'lastBackupDate';
+const SNOOZE_UNTIL_KEY = 'backupSnoozeUntil';
 
 export interface StoredBackup {
   date: Date;
@@ -16,9 +17,18 @@ export function useAutoBackup() {
   const [pendingBackup, setPendingBackup] = useState<StoredBackup | null>(null);
 
   const checkAndCreateBackup = useCallback(async () => {
+    const now = new Date();
+
+    // Respect snooze — if snoozed until a future date, skip
+    const snoozeStr = localStorage.getItem(SNOOZE_UNTIL_KEY);
+    if (snoozeStr) {
+      const snoozeUntil = new Date(snoozeStr);
+      if (now < snoozeUntil) return;
+      localStorage.removeItem(SNOOZE_UNTIL_KEY);
+    }
+
     const lastBackupStr = localStorage.getItem(LAST_BACKUP_KEY);
     const lastBackup = lastBackupStr ? new Date(lastBackupStr) : null;
-    const now = new Date();
 
     const daysSinceLastBackup = lastBackup
       ? (now.getTime() - lastBackup.getTime()) / (1000 * 60 * 60 * 24)
@@ -31,9 +41,6 @@ export function useAutoBackup() {
       const filename = `payee_backup_${now.toISOString().split('T')[0]}.json`;
       const dataStr = JSON.stringify(data, null, 2);
 
-      // Hold backup in memory only — no IndexedDB storage.
-      // If IndexedDB is cleared, a locally-stored backup is also lost,
-      // so we prompt the user to download it to their device immediately.
       const backup: StoredBackup = {
         date: now,
         filename,
@@ -41,7 +48,6 @@ export function useAutoBackup() {
         transactionCount: data.transactions?.length ?? 0,
       };
 
-      localStorage.setItem(LAST_BACKUP_KEY, now.toISOString());
       setPendingBackup(backup);
       setBackupReady(true);
     } catch (error) {
@@ -61,6 +67,8 @@ export function useAutoBackup() {
     a.download = backup.filename;
     a.click();
     URL.revokeObjectURL(url);
+    // Mark backup as completed so it doesn't re-prompt
+    localStorage.setItem(LAST_BACKUP_KEY, new Date().toISOString());
     setBackupReady(false);
     setPendingBackup(null);
   }, []);
@@ -70,5 +78,11 @@ export function useAutoBackup() {
     setPendingBackup(null);
   }, []);
 
-  return { backupReady, pendingBackup, downloadBackup, dismissBanner };
+  const snoozeBanner = useCallback((untilDate: Date) => {
+    localStorage.setItem(SNOOZE_UNTIL_KEY, untilDate.toISOString());
+    setBackupReady(false);
+    setPendingBackup(null);
+  }, []);
+
+  return { backupReady, pendingBackup, downloadBackup, dismissBanner, snoozeBanner };
 }

@@ -7,6 +7,27 @@ The whole design is optimized for **older users**: very large type, high contras
 
 This package documents **Direction A** only (the soft-blue, rounded direction the user chose).
 
+## Screen previews
+Static renders of the four screens you are implementing live in `screens/`. **These are the visual source of truth** — match them.
+
+| # | Screen | Image |
+|---|---|---|
+| 1 | Home / Dashboard | `screens/01-home.png` |
+| 2 | History | `screens/02-history.png` |
+| 3 | Scan receipt | `screens/03-scan-receipt.png` |
+| 4 | Court report | `screens/04-court-report.png` |
+
+> The phone bezel and status bar (`9:41`, signal icons) in these renders are just the preview frame — **do not build them**; your platform provides them. Implement only the screen content. The History and Court report screens scroll; the renders show the top of each — see the per-screen specs below for the full content.
+
+## Using this with Claude Code
+Claude Code builds from whatever you give it — with no concrete target it will invent its own generic UI. To get an app that matches these screens, do this:
+
+1. **Put this whole `design_handoff_guardianship_tracker/` folder in (or beside) your repo** so Claude Code can read the README *and* see the `screens/` images.
+2. **Paste a prompt like this:**
+   > Read `design_handoff_guardianship_tracker/README.md` and look at the four images in `design_handoff_guardianship_tracker/screens/`. Implement **Direction A** of this guardianship expense tracker in our existing codebase, matching the screen renders and the exact design tokens in the README (colors, typography, spacing, radii). Reuse our existing components and design system where equivalents exist; only add new styles where the spec has no match. Build the four documented screens first; stub the screens listed under "Gaps" to match the same patterns. Don't build the phone bezel/status bar — the platform provides those.
+3. **Point it at your design system.** If your repo already has tokens/components, tell Claude Code to map the README's tokens onto them rather than hand-rolling new ones — this is the single biggest factor in whether the result looks consistent with the rest of your app.
+4. **Iterate screen-by-screen.** Implement Home, compare against `screens/01-home.png`, correct drift, then move on. Asking Claude Code to match one screen at a time gives far closer results than "build the whole app."
+
 ## About the Design Files
 The files in this bundle are **design references created in HTML** — a prototype showing the intended look and behavior. They are **not production code to copy directly**. Your task is to **recreate these screens in the target app's existing environment** (React, SwiftUI, Flutter, etc.) using its established components, navigation, and styling patterns. If no environment exists yet, pick the most appropriate framework for a mobile app and implement there.
 
@@ -88,6 +109,7 @@ Use your platform's icon set if it has equivalents; exact glyphs are not critica
 ## Screens / Views
 
 ### 1. Home / Dashboard
+![Home](screens/01-home.png)
 **Purpose:** At-a-glance balance + recent activity, and one-tap access to the two core actions.
 
 **Layout (top → bottom):**
@@ -102,6 +124,7 @@ Use your platform's icon set if it has equivalents; exact glyphs are not critica
 **Sample data:** Riverside Pharmacy · Medical & Care · Today · $84.30 · ✓; Sunrise Home Care · Care Services · Jun 14 · $640.00 · ✓; Whole Foods Market · Groceries · Jun 13 · $112.65 · ✓; City Power & Light · Utilities · Jun 11 · $98.40 · + Add receipt.
 
 ### 2. History
+![History](screens/02-history.png)
 **Purpose:** Browse/scroll all expenses, grouped by date, with missing receipts flagged.
 
 **Layout:**
@@ -113,6 +136,7 @@ Use your platform's icon set if it has equivalents; exact glyphs are not critica
 4. **Bottom tab bar:** History active.
 
 ### 3. Scan receipt (camera)
+![Scan receipt](screens/03-scan-receipt.png)
 **Purpose:** Photograph a receipt in one tap; minimal chrome, reassuring guidance.
 
 **Layout (dark screen, bg `#0E1726`, white text):**
@@ -125,6 +149,7 @@ Use your platform's icon set if it has equivalents; exact glyphs are not critica
 > Implementation: wire the shutter to the platform camera; auto-capture when the receipt is detected in-frame. After capture, attach the photo to the expense being created.
 
 ### 4. Court report
+![Court report](screens/04-court-report.png)
 **Purpose:** Produce a filing-ready accounting for a reporting period — summary + category breakdown + export.
 
 **Layout:**

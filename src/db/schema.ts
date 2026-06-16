@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { Account, Category, Receipt, Transaction, MonthlyReport, DateRangeReport } from '../types';
+import type { StoredBackup } from '../hooks/useAutoBackup';
 
 export class AccountingDB extends Dexie {
   accounts!: Table<Account>;
@@ -8,6 +9,7 @@ export class AccountingDB extends Dexie {
   receipts!: Table<Receipt>;
   monthlyReports!: Table<MonthlyReport>;
   dateRangeReports!: Table<DateRangeReport>;
+  backups!: Table<StoredBackup>;
 
   constructor() {
     super('RepresentativePayeeDB');
@@ -18,6 +20,16 @@ export class AccountingDB extends Dexie {
       receipts: '++id, transactionId, referenceNumber',
       monthlyReports: '++id, accountId, [year+month]',
       dateRangeReports: '++id, accountId, [startDate+endDate]',
+    });
+    // Version 2 adds local backup storage
+    this.version(2).stores({
+      accounts: '++id',
+      categories: '++id',
+      transactions: '++id, accountId, date',
+      receipts: '++id, transactionId, referenceNumber',
+      monthlyReports: '++id, accountId, [year+month]',
+      dateRangeReports: '++id, accountId, [startDate+endDate]',
+      backups: '++id, date',
     });
   }
 }

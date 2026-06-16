@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import type { Transaction } from '../../types';
 import { colors, spacing } from '../../design/tokens';
-import { formatCurrency } from '../../utils/formatting';
+import { formatCurrency, formatDate } from '../../utils/formatting';
 
 interface CourtReportProps {
   accountName: string;
@@ -10,9 +11,26 @@ interface CourtReportProps {
 }
 
 export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail }: CourtReportProps) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setMonth(0);
+    date.setDate(1);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const filteredTransactions = transactions.filter(tx => {
+    const txDate = new Date(tx.date);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    return txDate >= start && txDate <= end;
+  });
+
   // Calculate summary
-  const expenses = transactions.filter(tx => tx.type === 'expense');
-  const income = transactions.filter(tx => tx.type === 'income');
+  const expenses = filteredTransactions.filter(tx => tx.type === 'expense');
+  const income = filteredTransactions.filter(tx => tx.type === 'income');
 
   const totalSpent = expenses.reduce((sum, tx) => sum + tx.amount, 0);
   const totalIncome = income.reduce((sum, tx) => sum + tx.amount, 0);
@@ -57,10 +75,11 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
             Reporting period
           </p>
           <p style={{ fontSize: '19px', fontWeight: 800, color: colors['ink/primary'], margin: '6px 0 0 0' }}>
-            Jan 1 – Jun 30, 2026
+            {formatDate(new Date(startDate))} – {formatDate(new Date(endDate))}
           </p>
         </div>
         <button
+          onClick={() => setShowDatePicker(true)}
           style={{
             fontSize: '15px',
             fontWeight: 700,
@@ -248,6 +267,119 @@ export function CourtReport({ accountName, transactions, onGeneratePDF, onEmail 
       <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/disabled'], margin: '0', textAlign: 'center' }}>
         Every expense includes its receipt and date.
       </p>
+
+      {/* Date Range Picker Modal */}
+      {showDatePicker && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            zIndex: 999,
+          }}
+          onClick={() => setShowDatePicker(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              backgroundColor: colors['bg/page'],
+              borderRadius: '24px 24px 0 0',
+              padding: `${spacing.screenPadding}px`,
+              paddingBottom: '40px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: '23px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginBottom: '24px' }}>
+              Select date range
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
+                  Start date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    border: `1px solid ${colors['border/hairline']}`,
+                    borderRadius: '12px',
+                    boxSizing: 'border-box',
+                    color: colors['ink/primary'],
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
+                  End date
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    border: `1px solid ${colors['border/hairline']}`,
+                    borderRadius: '12px',
+                    boxSizing: 'border-box',
+                    color: colors['ink/primary'],
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowDatePicker(false)}
+                className="flex-1 rounded-btn font-bold"
+                style={{
+                  backgroundColor: colors['surface/card'],
+                  color: colors['brand/primary'],
+                  height: '56px',
+                  border: `2px solid ${colors['border/btn-outline']}`,
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 700,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDatePicker(false)}
+                className="flex-1 rounded-btn text-white font-bold"
+                style={{
+                  backgroundColor: colors['brand/primary'],
+                  height: '56px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 700,
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

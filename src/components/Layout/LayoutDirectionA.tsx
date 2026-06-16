@@ -23,6 +23,7 @@ export function LayoutDirectionA() {
   const [loading, setLoading] = useState(true);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | undefined>();
 
   const { transactions, addTransaction } = useTransactions(currentAccountId);
   const { backupReady, pendingBackup, downloadBackup, dismissBanner } = useAutoBackup();
@@ -70,8 +71,8 @@ export function LayoutDirectionA() {
 
   const handleCameraCapture = (photoData: string) => {
     setShowCamera(false);
-    // TODO: Show the photo in the add expense form
-    console.log('Photo captured:', photoData);
+    setCapturedPhoto(photoData);
+    setShowAddExpense(true);
   };
 
   const handleGeneratePDF = async () => {
@@ -96,10 +97,17 @@ export function LayoutDirectionA() {
   };
 
   const handleExpenseSaved = async () => {
-    // Refresh transactions
-    const updatedAccounts = await getAccounts();
-    if (updatedAccounts.length > 0) {
-      setCurrentAccountId(updatedAccounts[0].id ?? null);
+    // Refetch all data to ensure UI updates
+    const [updatedAccounts, updatedCategories] = await Promise.all([
+      getAccounts(),
+      getCategories(),
+    ]);
+    setAccounts(updatedAccounts);
+    setCategories(updatedCategories);
+
+    // Keep current account selected
+    if (currentAccountId) {
+      setCurrentAccountId(currentAccountId);
     }
   };
 
@@ -177,7 +185,11 @@ export function LayoutDirectionA() {
         <AddExpenseModal
           categories={categories}
           accountId={currentAccountId || 0}
-          onClose={() => setShowAddExpense(false)}
+          photoData={capturedPhoto}
+          onClose={() => {
+            setShowAddExpense(false);
+            setCapturedPhoto(undefined);
+          }}
           onSaved={handleExpenseSaved}
         />
       )}

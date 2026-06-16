@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import type { Category, Transaction } from '../../types';
-import { Button } from '../UI/Button';
+import type { Category } from '../../types';
 import { colors, spacing } from '../../design/tokens';
 import { createTransaction } from '../../db/queries';
 
 interface AddExpenseModalProps {
   categories: Category[];
   accountId: number;
+  photoData?: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function AddExpenseModal({ categories, accountId, onClose, onSaved }: AddExpenseModalProps) {
+export function AddExpenseModal({ categories, accountId, photoData, onClose, onSaved }: AddExpenseModalProps) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(categories[0]?.name || '');
@@ -36,6 +36,21 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
     setLoading(true);
 
     try {
+      const receipts = photoData
+        ? [
+            {
+              referenceNumber: `Receipt-${Date.now()}`,
+              fileName: `receipt_${Date.now()}.jpg`,
+              fileType: 'image/jpeg',
+              fileSize: photoData.length,
+              uploadedDate: new Date(),
+              data: photoData,
+              originalText: '',
+              extractedFields: {},
+            },
+          ]
+        : [];
+
       await createTransaction({
         accountId,
         date: new Date(date),
@@ -44,7 +59,7 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
         description: merchant.trim(),
         type: 'expense',
         status: 'confirmed',
-        receipts: [],
+        receipts,
       });
 
       onSaved();
@@ -79,12 +94,23 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
           borderRadius: '24px 24px 0 0',
           padding: `${spacing.screenPadding}px`,
           paddingBottom: '40px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
         <h2 style={{ fontSize: '23px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginBottom: '24px' }}>
           Add expense
         </h2>
+
+        {photoData && (
+          <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${colors['border/hairline']}` }}>
+            <img src={photoData} alt="Receipt" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '150px', objectFit: 'cover' }} />
+            <p style={{ fontSize: '12px', fontWeight: 600, color: colors['ink/muted'], padding: '8px 12px', margin: 0 }}>
+              Receipt photo attached ✓
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -99,9 +125,11 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
                 width: '100%',
                 padding: '12px',
                 fontSize: '16px',
+                fontWeight: 600,
                 border: `1px solid ${colors['border/hairline']}`,
                 borderRadius: '12px',
                 boxSizing: 'border-box',
+                color: colors['ink/primary'],
               }}
             />
           </div>
@@ -119,9 +147,11 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
                 width: '100%',
                 padding: '12px',
                 fontSize: '16px',
+                fontWeight: 600,
                 border: `1px solid ${colors['border/hairline']}`,
                 borderRadius: '12px',
                 boxSizing: 'border-box',
+                color: colors['ink/primary'],
               }}
             />
           </div>
@@ -141,9 +171,11 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
                 width: '100%',
                 padding: '12px',
                 fontSize: '16px',
+                fontWeight: 600,
                 border: `1px solid ${colors['border/hairline']}`,
                 borderRadius: '12px',
                 boxSizing: 'border-box',
+                color: colors['ink/primary'],
               }}
             />
           </div>
@@ -159,9 +191,11 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
                 width: '100%',
                 padding: '12px',
                 fontSize: '16px',
+                fontWeight: 600,
                 border: `1px solid ${colors['border/hairline']}`,
                 borderRadius: '12px',
                 boxSizing: 'border-box',
+                color: colors['ink/primary'],
               }}
             >
               {categories.map(cat => (
@@ -173,7 +207,7 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
           </div>
 
           {error && (
-            <p style={{ fontSize: '14px', color: colors['warning'], marginTop: '12px' }}>
+            <p style={{ fontSize: '14px', color: colors['warning'], marginTop: '12px', fontWeight: 600 }}>
               {error}
             </p>
           )}
@@ -190,6 +224,7 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
                 border: `2px solid ${colors['border/btn-outline']}`,
                 cursor: 'pointer',
                 fontSize: '16px',
+                fontWeight: 700,
               }}
             >
               Cancel
@@ -204,6 +239,7 @@ export function AddExpenseModal({ categories, accountId, onClose, onSaved }: Add
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: '16px',
+                fontWeight: 700,
                 opacity: loading ? 0.7 : 1,
               }}
             >

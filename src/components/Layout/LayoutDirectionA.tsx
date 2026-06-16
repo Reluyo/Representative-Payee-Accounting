@@ -100,7 +100,10 @@ export function LayoutDirectionA() {
   };
 
   const handleEmail = () => {
-    console.log('Email to attorney');
+    const subject = 'Court Accounting Report - Representative Payee';
+    const body = `I have attached the representative payee accounting report for the court filing.\n\nThis report includes all transactions and supporting receipts for the requested period.`;
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
   };
 
   const handleExpenseSaved = async () => {

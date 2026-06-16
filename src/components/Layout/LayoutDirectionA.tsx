@@ -5,6 +5,7 @@ import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
 import { ReceiptsGallery } from '../DirectionA/ReceiptsGallery';
+import { Settings } from '../DirectionA/Settings';
 import { BottomTabBar } from './BottomTabBar';
 import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
 import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
@@ -24,6 +25,7 @@ export function LayoutDirectionA() {
   const [loading, setLoading] = useState(true);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | undefined>();
 
   const { transactions, addTransaction } = useTransactions(currentAccountId);
@@ -68,6 +70,10 @@ export function LayoutDirectionA() {
 
   const handleScanReceipt = () => {
     setShowCamera(true);
+  };
+
+  const handleShowSettings = () => {
+    setShowSettings(true);
   };
 
   const handleCameraCapture = (photoData: string) => {
@@ -147,6 +153,7 @@ export function LayoutDirectionA() {
           recentTransactions={transactions.slice(0, 4)}
           onAddExpense={handleAddExpense}
           onScanReceipt={handleScanReceipt}
+          onSettings={handleShowSettings}
         />
       )}
 
@@ -168,6 +175,53 @@ export function LayoutDirectionA() {
           onGeneratePDF={handleGeneratePDF}
           onEmail={handleEmail}
         />
+      )}
+
+      {/* Settings View - accessed via overlay */}
+      {showSettings && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1001 }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              zIndex: 1000,
+            }}
+            onClick={() => setShowSettings(false)}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1001,
+              overflowY: 'auto',
+              backgroundColor: colors['bg/page'],
+            }}
+          >
+            <button
+              onClick={() => setShowSettings(false)}
+              style={{
+                position: 'fixed',
+                top: '16px',
+                left: '16px',
+                fontSize: '28px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                zIndex: 1002,
+              }}
+            >
+              ←
+            </button>
+            <Settings onDataImported={() => setShowSettings(false)} />
+          </div>
+        </div>
       )}
 
       {/* Modals */}

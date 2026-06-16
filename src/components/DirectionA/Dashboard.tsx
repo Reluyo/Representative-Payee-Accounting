@@ -9,6 +9,7 @@ interface DashboardProps {
   recentTransactions: Transaction[];
   onAddExpense: () => void;
   onScanReceipt: () => void;
+  onSettings?: () => void;
 }
 
 export function Dashboard({
@@ -17,6 +18,7 @@ export function Dashboard({
   recentTransactions,
   onAddExpense,
   onScanReceipt,
+  onSettings,
 }: DashboardProps) {
   const categoryTile = (category: string) => {
     const categoryMap: Record<string, { bg: string; text: string; letter: string }> = {
@@ -50,21 +52,41 @@ export function Dashboard({
             Good morning, {userName}
           </h1>
         </div>
-        <div
-          style={{
-            width: 50,
-            height: 50,
-            borderRadius: '50%',
-            backgroundColor: colors['brand/tint'],
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            fontWeight: 800,
-            color: colors['brand/primary'],
-          }}
-        >
-          {userName[0]}
+        <div className="flex items-start gap-3">
+          <button
+            onClick={onSettings}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              backgroundColor: colors['brand/tint'],
+              border: 'none',
+              color: colors['brand/primary'],
+              fontSize: '20px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ⚙️
+          </button>
+          <div
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: '50%',
+              backgroundColor: colors['brand/tint'],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              fontWeight: 800,
+              color: colors['brand/primary'],
+            }}
+          >
+            {userName[0]}
+          </div>
         </div>
       </div>
 

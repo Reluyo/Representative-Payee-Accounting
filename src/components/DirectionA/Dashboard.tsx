@@ -1,6 +1,6 @@
 import type { Account, Transaction } from '../../types';
 import { Button } from '../UI/Button';
-import { colors, spacing } from '../../design/tokens';
+import { colors, spacing, radius } from '../../design/tokens';
 import { formatCurrency, formatDate } from '../../utils/formatting';
 
 interface DashboardProps {
@@ -40,226 +40,187 @@ export function Dashboard({
     })
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  return (
-    <div className="pb-32 pt-6" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh', paddingLeft: spacing.screenPadding, paddingRight: spacing.screenPadding }}>
-      {/* Top bar with date/greeting and avatar */}
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'] }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
-          <h1 style={{ fontSize: '23px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginTop: '4px' }}>
-            Good morning, {userName}
-          </h1>
-        </div>
-        <div className="flex items-start gap-3">
-          <button
-            onClick={onSettings}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              backgroundColor: colors['brand/tint'],
-              border: 'none',
-              color: colors['brand/primary'],
-              fontSize: '20px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            ⚙️
-          </button>
-          <div
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: '50%',
-              backgroundColor: colors['brand/tint'],
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px',
-              fontWeight: 800,
-              color: colors['brand/primary'],
-            }}
-          >
-            {userName[0]}
-          </div>
-        </div>
-      </div>
+  const receiptCount = recentTransactions.filter(tx => tx.receipts && tx.receipts.length > 0).length;
 
-      {/* Balance card */}
+  return (
+    <div className="pb-32" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh' }}>
+      {/* Header with account info - Navy card style */}
       {account && (
         <div
-          className="rounded-hero p-6 mb-6"
           style={{
-            backgroundColor: colors['surface/card'],
-            boxShadow: '0 6px 20px rgba(22, 38, 63, 0.06)',
+            backgroundColor: colors['header/bg'],
+            borderRadius: `0 0 ${radius.hero}px ${radius.hero}px`,
+            padding: '22px 16px 24px',
+            color: '#fff',
+            boxShadow: colors['shadow/card'] || '0 12px 26px rgba(30, 58, 95, 0.24)',
           }}
         >
-          <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: '14px' }}>
+            <span>Steward</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Guardian · {userName}</span>
+          </div>
+          <p style={{ fontSize: '19px', fontWeight: 600, fontFamily: "'Source Serif 4', serif", color: 'rgba(255,255,255,0.92)', margin: '0 0 14px 0' }}>
             {account.name}
           </p>
           <p
             style={{
-              fontSize: '46px',
-              fontWeight: 800,
-              color: colors['ink/primary'],
-              margin: '8px 0 0 0',
+              fontSize: '42px',
+              fontWeight: 700,
+              fontFamily: "'Source Serif 4', serif",
+              color: '#fff',
+              margin: '4px 0 8px 0',
               lineHeight: 1,
-              letterSpacing: '-1px',
+              letterSpacing: '-0.5px',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
             {formatCurrency(account.balance)}
           </p>
-          <div style={{ borderTop: `1px solid ${colors['border/divider']}`, marginTop: '16px', paddingTop: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
-                Available · updated today
-              </p>
-              <span style={{ fontSize: '12px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: colors['positive'] }} />
-            </div>
-          </div>
-          <div style={{ borderTop: `1px solid ${colors['border/divider']}`, marginTop: '12px', paddingTop: '12px', display: 'flex', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
-              Spent this month
-            </p>
-            <p
-              style={{
-                fontSize: '17px',
-                fontWeight: 800,
-                color: colors['ink/primary'],
-                margin: 0,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {formatCurrency(spentThisMonth)}
-            </p>
-          </div>
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.72)', margin: 0, fontWeight: 600 }}>
+            Available balance · as of {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="flex gap-3 mb-6">
-        <button
-          onClick={onAddExpense}
-          className="flex-1 rounded-btn text-white flex items-center justify-center gap-2 font-bold"
+      {/* Stat cards - Spent this month & Receipts on file */}
+      <div style={{ padding: '14px 16px', display: 'flex', gap: '12px' }}>
+        <div
           style={{
-            backgroundColor: colors['brand/primary'],
-            height: '68px',
-            fontSize: '18px',
-            boxShadow: '0 6px 16px rgba(47, 98, 217, 0.28)',
-            border: 'none',
-            cursor: 'pointer',
+            flex: 1,
+            backgroundColor: colors['surface/card'],
+            border: `1px solid ${colors['border/hairline']}`,
+            borderRadius: `${radius.card}px`,
+            padding: '16px',
           }}
         >
-          +<span>Add expense</span>
-        </button>
-        <button
-          onClick={onScanReceipt}
-          className="flex-1 rounded-btn font-bold flex items-center justify-center gap-2"
+          <div style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>Spent this month</div>
+          <div style={{ fontSize: '23px', fontWeight: 800, margin: '4px 0 0 0', color: colors['ink/primary'], fontVariantNumeric: 'tabular-nums' }}>
+            {formatCurrency(spentThisMonth)}
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            backgroundColor: colors['surface/card'],
+            border: `1px solid ${colors['border/hairline']}`,
+            borderRadius: `${radius.card}px`,
+            padding: '16px',
+          }}
+        >
+          <div style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>Receipts on file</div>
+          <div style={{ fontSize: '23px', fontWeight: 800, margin: '4px 0 0 0', color: colors['ink/primary'] }}>
+            {receiptCount} <span style={{ fontSize: '15px', color: colors['ink/muted'], fontWeight: 700 }}>of {recentTransactions.length}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent entries section */}
+      <div style={{ padding: '22px 16px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px' }}>
+          <div style={{ fontSize: '21px', fontWeight: 700, fontFamily: "'Source Serif 4', serif", color: colors['ink/primary'], margin: 0 }}>
+            Recent entries
+          </div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: colors['brand/primary'] }}>View all</div>
+        </div>
+
+        <div
           style={{
             backgroundColor: colors['surface/card'],
-            color: colors['brand/primary'],
-            height: '68px',
-            fontSize: '16px',
-            border: `2px solid ${colors['border/btn-outline']}`,
-            cursor: 'pointer',
+            border: `1px solid ${colors['border/hairline']}`,
+            borderRadius: `${radius.card}px`,
+            overflow: 'hidden',
+            marginBottom: '16px',
           }}
         >
-          📷<span>Scan receipt</span>
-        </button>
-      </div>
+          {recentTransactions.slice(0, 4).map((tx, idx) => {
+            const hasReceipt = tx.receipts && tx.receipts.length > 0;
+            const txDate = new Date(tx.date);
+            const monthStr = txDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+            const dayStr = txDate.getDate().toString();
 
-      {/* Recent activity */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 style={{ fontSize: '19px', fontWeight: 800, color: colors['ink/primary'], margin: 0 }}>
-          Recent activity
-        </h2>
-        <a
-          href="#"
-          style={{ fontSize: '15px', fontWeight: 700, color: colors['brand/primary'], textDecoration: 'none' }}
-        >
-          See all
-        </a>
-      </div>
-
-      <div
-        className="rounded-card p-0 overflow-hidden"
-        style={{ backgroundColor: colors['surface/card'], border: `1px solid ${colors['border/hairline']}` }}
-      >
-        {recentTransactions.slice(0, 4).map((tx, idx) => {
-          const cat = categoryTile(tx.category);
-          const hasReceipt = tx.receipts && tx.receipts.length > 0;
-          return (
-            <div key={tx.id}>
-              <div
-                className="flex items-center gap-3 p-4"
-                style={{
-                  borderTop: idx === 0 ? 'none' : `1px solid ${colors['border/divider']}`,
-                }}
-              >
-                {/* Category tile */}
+            return (
+              <div key={tx.id}>
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '10px',
-                    backgroundColor: cat.bg,
-                    color: cat.text,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '18px',
-                    flexShrink: 0,
+                    gap: '14px',
+                    padding: '15px 16px',
+                    borderBottom: idx === recentTransactions.slice(0, 4).length - 1 ? 'none' : `1px solid ${colors['border/divider']}`,
+                    backgroundColor: !hasReceipt ? colors['warning/bg'] : 'transparent',
+                    borderLeft: !hasReceipt ? `4px solid ${colors['warning']}` : 'none',
                   }}
                 >
-                  {cat.letter}
-                </div>
+                  {/* Date box */}
+                  <div style={{ textAlign: 'center', width: '40px', flexShrink: 0 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: colors['ink/muted'], textTransform: 'uppercase' }}>
+                      {monthStr}
+                    </div>
+                    <div style={{ fontSize: '19px', fontWeight: 800, lineHeight: 1, color: colors['ink/primary'] }}>
+                      {dayStr}
+                    </div>
+                  </div>
 
-                {/* Center: merchant, category, date */}
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>
-                    {tx.description}
-                  </p>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], margin: '4px 0 0 0' }}>
-                    {tx.category} · {formatDate(new Date(tx.date))}
-                  </p>
-                </div>
+                  {/* Divider */}
+                  <div style={{ width: '1px', alignSelf: 'stretch', backgroundColor: colors['border/divider'] }} />
 
-                {/* Right: amount and status */}
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  <p
-                    style={{
-                      fontSize: '17px',
-                      fontWeight: 800,
-                      color: colors['ink/primary'],
-                      margin: 0,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
+                  {/* Center: merchant and category */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>
+                      {tx.description}
+                    </div>
+                    <div style={{ fontSize: '13px', color: hasReceipt ? colors['ink/muted'] : colors['warning'], fontWeight: hasReceipt ? 600 : 700, margin: '1px 0 0 0' }}>
+                      {tx.category} · {hasReceipt ? 'Receipt on file' : 'Needs receipt'}
+                    </div>
+                  </div>
+
+                  {/* Right: amount */}
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: colors['ink/primary'], fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                     {formatCurrency(tx.amount)}
-                  </p>
-                  <span
-                    className="rounded-pill px-3 py-1 text-xs font-bold"
-                    style={{
-                      backgroundColor: hasReceipt ? 'transparent' : colors['warning/bg'],
-                      color: hasReceipt ? colors['positive'] : colors['warning'],
-                      fontSize: '13px',
-                      border: hasReceipt ? 'none' : `1px solid ${colors['warning']}`,
-                    }}
-                  >
-                    {hasReceipt ? '✓ Receipt' : '+ Add receipt'}
-                  </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+          <button
+            onClick={onAddExpense}
+            style={{
+              flex: 1,
+              height: '62px',
+              border: 'none',
+              borderRadius: `${radius.button}px`,
+              backgroundColor: colors['brand/primary'],
+              color: '#fff',
+              fontSize: '17px',
+              fontWeight: 800,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+            }}
+          >
+            Add expense
+          </button>
+          <button
+            onClick={onScanReceipt}
+            style={{
+              flex: 1,
+              height: '62px',
+              border: `2px solid ${colors['border/btn-outline']}`,
+              borderRadius: `${radius.button}px`,
+              backgroundColor: colors['surface/card'],
+              color: colors['brand/primary'],
+              fontSize: '17px',
+              fontWeight: 800,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+            }}
+          >
+            Scan receipt
+          </button>
+        </div>
       </div>
     </div>
   );

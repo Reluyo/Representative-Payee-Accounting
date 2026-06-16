@@ -1,29 +1,32 @@
-// Direction A: "Calm & Rounded" design tokens
+// Direction B: "Structured & Official" design tokens - Court-ready design
 
 export const colors = {
   // Page & surfaces
-  'bg/page': '#F4F7FB',
+  'bg/page': '#F5F7F9',
   'surface/card': '#FFFFFF',
+  'header/bg': '#1E3A5F',
+  'header/bg-accent': '#EAF0F7',
 
   // Text
-  'ink/primary': '#16263F',
-  'ink/muted': '#5B6B82',
+  'ink/primary': '#1B2733',
+  'ink/muted': '#5A6B7B',
   'ink/disabled': '#8A98AC',
 
   // Brand
-  'brand/primary': '#2F62D9',
-  'brand/tint': '#E7EFFD',
-  'brand/tint-strong': '#EEF3FB',
+  'brand/primary': '#1E3A5F',
+  'brand/tint': '#EAF0F7',
+  'brand/tint-strong': '#EFF3F7',
+  'brand/accent': '#B5862B',
 
   // Borders
-  'border/hairline': '#E3EAF4',
-  'border/divider': '#EDF1F8',
-  'border/btn-outline': '#CBD9F0',
+  'border/hairline': '#DCE3EA',
+  'border/divider': '#ECF0F4',
+  'border/btn-outline': '#C3D0DC',
 
   // Status
   'positive': '#1F8A5B',
-  'warning': '#B57E1F',
-  'warning/bg': '#FFFBF2',
+  'warning': '#9A6B16',
+  'warning/bg': '#FCF8EF',
 };
 
 export const categoryColors: Record<string, { bg: string; text: string; letter: string }> = {
@@ -36,34 +39,34 @@ export const categoryColors: Record<string, { bg: string; text: string; letter: 
 };
 
 export const spacing = {
-  screenPadding: 22,
+  screenPadding: 16,
   gapLarge: 16,
   gapSmall: 12,
   gapXSmall: 10,
 };
 
 export const radius = {
-  hero: 24,
-  card: 20,
-  button: 18,
-  tile: 12,
+  hero: 18,
+  card: 14,
+  button: 14,
+  tile: 10,
   pill: 999,
 };
 
 export const shadows = {
-  card: '0 6px 20px rgba(22, 38, 63, 0.06)',
-  button: '0 6px 16px rgba(47, 98, 217, 0.28)',
+  card: '0 12px 26px rgba(30, 58, 95, 0.24)',
+  button: '0 0 0 0',
 };
 
 export const typography = {
-  heroBalance: { size: 46, weight: 800, lineHeight: 1, letterSpacing: '-1px' },
-  screenTitle: { size: 30, weight: 800, lineHeight: 1.2 },
-  greeting: { size: 23, weight: 800, lineHeight: 1.2 },
-  sectionHeading: { size: 19, weight: 800, lineHeight: 1.3 },
+  heroBalance: { size: 42, weight: 700, lineHeight: 1, letterSpacing: '-0.5px', fontFamily: "'Source Serif 4', serif" },
+  screenTitle: { size: 25, weight: 700, lineHeight: 1.2, fontFamily: "'Source Serif 4', serif" },
+  greeting: { size: 19, weight: 600, lineHeight: 1.2, fontFamily: "'Source Serif 4', serif" },
+  sectionHeading: { size: 18, weight: 700, lineHeight: 1.3, fontFamily: "'Source Serif 4', serif" },
   rowTitle: { size: 17, weight: 700, lineHeight: 1.3 },
   body: { size: 15, weight: 600, lineHeight: 1.4 },
-  amount: { size: 17, weight: 800, lineHeight: 1.3 },
+  amount: { size: 18, weight: 800, lineHeight: 1.3 },
   statusChip: { size: 13, weight: 700, lineHeight: 1.3 },
-  tabLabel: { size: 12, weight: 700, lineHeight: 1.3 },
+  tabLabel: { size: 12, weight: 800, lineHeight: 1.3 },
   dateGroup: { size: 14, weight: 700, lineHeight: 1.3, letterSpacing: '0.5px' },
 };

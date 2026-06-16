@@ -1,4 +1,4 @@
-import { colors } from '../../design/tokens';
+import { colors, radius } from '../../design/tokens';
 
 type Tab = 'home' | 'history' | 'receipts' | 'reports';
 
@@ -24,37 +24,47 @@ const labels: Record<Tab, string> = {
 export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-white border-t"
       style={{
-        borderColor: colors['border/hairline'],
-        paddingBottom: '20px',
-        zIndex: 1000,
-        paddingTop: '10px',
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: colors['surface/card'],
         borderTop: `1px solid ${colors['border/hairline']}`,
+        paddingTop: '8px',
+        paddingBottom: '30px',
+        zIndex: 1000,
+        display: 'flex',
+        justifyContent: 'space-around',
+        alignItems: 'flex-end',
       }}
     >
-      <div className="flex justify-around items-end max-w-full mx-auto px-2">
-        {(['home', 'history', 'receipts', 'reports'] as Tab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => onTabChange(tab)}
-            className="flex flex-col items-center gap-1 p-2 flex-1"
-            style={{
-              color: activeTab === tab ? colors['brand/primary'] : colors['ink/disabled'],
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d={icons[tab]} />
-            </svg>
-            <span style={{ fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>
-              {labels[tab]}
-            </span>
-          </button>
-        ))}
-      </div>
+      {(['home', 'history', 'receipts', 'reports'] as Tab[]).map(tab => (
+        <button
+          key={tab}
+          onClick={() => onTabChange(tab)}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '6px 12px',
+            backgroundColor: activeTab === tab ? colors['brand/tint'] : 'transparent',
+            borderRadius: activeTab === tab ? '12px' : '0',
+            color: activeTab === tab ? colors['brand/primary'] : colors['ink/disabled'],
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d={icons[tab]} />
+          </svg>
+          <span style={{ fontSize: '12px', fontWeight: activeTab === tab ? 800 : 700, lineHeight: 1 }}>
+            {labels[tab]}
+          </span>
+        </button>
+      ))}
     </nav>
   );
 }

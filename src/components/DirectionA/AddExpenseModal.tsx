@@ -171,7 +171,7 @@ export function AddExpenseModal({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
         alignItems: 'flex-end',
-        zIndex: 999,
+        zIndex: 1100,
       }}
       onClick={onClose}
     >
@@ -181,9 +181,10 @@ export function AddExpenseModal({
           backgroundColor: colors['bg/page'],
           borderRadius: '24px 24px 0 0',
           padding: `${spacing.screenPadding}px`,
-          paddingBottom: '40px',
+          paddingBottom: '120px',
           maxHeight: '92vh',
           overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
         onClick={e => e.stopPropagation()}
       >

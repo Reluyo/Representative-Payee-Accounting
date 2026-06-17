@@ -253,7 +253,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
             marginBottom: '12px',
           }}
         >
-          Share with attorney
+          Email report
         </button>
 
         {/* Footnote */}

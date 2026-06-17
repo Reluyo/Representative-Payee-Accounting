@@ -30,6 +30,7 @@ export function LayoutDirectionA() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | undefined>();
   const [capturedOCR, setCapturedOCR] = useState<OCRResult | undefined>();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>();
+  const [addReceiptToTransaction, setAddReceiptToTransaction] = useState<Transaction | undefined>();
 
   const { transactions, fetchTransactions, updateTransaction, deleteTransaction } = useTransactions(currentAccountId);
   const currentAccount = accounts.find(a => a.id === currentAccountId) ?? null;
@@ -80,12 +81,49 @@ export function LayoutDirectionA() {
     setShowCamera(true);
   };
 
-  const handleCameraCapture = (photoData: string, ocrResult?: OCRResult) => {
+  const handleCameraCapture = async (photoData: string, ocrResult?: OCRResult) => {
     setShowCamera(false);
+
+    if (addReceiptToTransaction?.id) {
+      const tx = addReceiptToTransaction;
+      setAddReceiptToTransaction(undefined);
+      try {
+        const blob = await fetch(photoData).then(r => r.blob());
+        const newReceipt = {
+          referenceNumber: `Receipt-${Date.now()}`,
+          fileName: `receipt_${Date.now()}.jpg`,
+          fileType: blob.type || 'image/jpeg',
+          fileSize: blob.size,
+          uploadedDate: new Date(),
+          data: '',
+          blobData: blob,
+          originalText: ocrResult?.text ?? '',
+          extractedFields: {
+            vendor: ocrResult?.vendor,
+            amount: ocrResult?.amount,
+            date: ocrResult?.date,
+            items: ocrResult?.items,
+          },
+        };
+        await updateTransaction(tx.id!, {
+          receipts: [...(tx.receipts || []), newReceipt],
+        });
+        await fetchTransactions();
+      } catch (err) {
+        console.error('Failed to add receipt:', err);
+      }
+      return;
+    }
+
     setCapturedPhoto(photoData);
     setCapturedOCR(ocrResult);
     setEditingTransaction(undefined);
     setShowAddExpense(true);
+  };
+
+  const handleAddReceiptToTransaction = (tx: Transaction) => {
+    setAddReceiptToTransaction(tx);
+    setShowCamera(true);
   };
 
   const handleEditTransaction = (tx: Transaction) => {
@@ -220,6 +258,7 @@ export function LayoutDirectionA() {
           transactions={transactions}
           onEdit={handleEditTransaction}
           onDelete={handleDeleteTransaction}
+          onAddReceipt={handleAddReceiptToTransaction}
         />
       )}
 

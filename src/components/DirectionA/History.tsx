@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Transaction } from '../../types';
 import { colors, radius } from '../../design/tokens';
 import { formatCurrency } from '../../utils/formatting';
@@ -8,29 +8,44 @@ interface HistoryProps {
   transactions: Transaction[];
   onEdit?: (tx: Transaction) => void;
   onDelete?: (id: number) => void;
+  onAddReceipt?: (tx: Transaction) => void;
 }
 
 type FilterTab = 'this-month' | 'all' | 'flagged';
 
-export function History({ accountName, transactions, onEdit, onDelete }: HistoryProps) {
+export function History({ accountName, transactions, onEdit, onDelete, onAddReceipt }: HistoryProps) {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('this-month');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const now = new Date();
 
-  let filtered = [...transactions];
+  const filtered = useMemo(() => {
+    let result = [...transactions];
 
-  if (activeFilter === 'this-month') {
-    filtered = filtered.filter(tx => {
-      const txDate = new Date(tx.date);
-      return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
-    });
-  } else if (activeFilter === 'flagged') {
-    filtered = filtered.filter(tx => tx.type === 'expense' && (!tx.receipts || tx.receipts.length === 0));
-  }
+    if (activeFilter === 'this-month') {
+      result = result.filter(tx => {
+        const txDate = new Date(tx.date);
+        return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+      });
+    } else if (activeFilter === 'flagged') {
+      result = result.filter(tx => tx.type === 'expense' && (!tx.receipts || tx.receipts.length === 0));
+    }
 
-  // Sort newest first
-  filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(tx => {
+        const desc = tx.description?.toLowerCase() ?? '';
+        const cat = tx.category?.toLowerCase() ?? '';
+        const amt = String(tx.amount);
+        const dateStr = new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+        return desc.includes(q) || cat.includes(q) || amt.includes(q) || dateStr.includes(q);
+      });
+    }
+
+    result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return result;
+  }, [transactions, activeFilter, searchQuery]);
 
   const totalExpenses = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const totalIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -72,9 +87,56 @@ export function History({ accountName, transactions, onEdit, onDelete }: History
         </div>
       </div>
 
+      {/* Search bar */}
+      <div style={{ padding: '14px 16px 0' }}>
+        <div style={{ position: 'relative' }}>
+          <svg
+            style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+            width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors['ink/muted']} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search transactions..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 42px',
+              fontSize: '15px',
+              fontWeight: 600,
+              border: `1px solid ${colors['border/hairline']}`,
+              borderRadius: '14px',
+              boxSizing: 'border-box',
+              color: colors['ink/primary'],
+              backgroundColor: colors['surface/card'],
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                background: colors['ink/muted'], border: 'none', borderRadius: '50%',
+                width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', padding: 0,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Filter tabs */}
       <div style={{ padding: '8px 16px 0' }}>
-        <div style={{ display: 'flex', backgroundColor: colors['brand/tint'], borderRadius: '12px', padding: '4px', marginTop: '14px', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', backgroundColor: colors['brand/tint'], borderRadius: '12px', padding: '4px', marginTop: '6px', marginBottom: '14px' }}>
           {(['this-month', 'all', 'flagged'] as FilterTab[]).map(filter => (
             <button
               key={filter}
@@ -190,8 +252,26 @@ export function History({ accountName, transactions, onEdit, onDelete }: History
                   </div>
 
                   {/* Action buttons */}
-                  {(onEdit || onDelete) && (
-                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  {(onEdit || onDelete || onAddReceipt) && (
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {onAddReceipt && !isIncome && (
+                        <button
+                          onClick={() => onAddReceipt(tx)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            border: `1px solid ${hasReceipt ? colors['border/hairline'] : colors['warning']}`,
+                            backgroundColor: hasReceipt ? colors['brand/tint'] : colors['warning/bg'],
+                            color: hasReceipt ? colors['brand/primary'] : colors['warning'],
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {hasReceipt ? '+Receipt' : 'Add Receipt'}
+                        </button>
+                      )}
                       {onEdit && (
                         <button
                           onClick={() => onEdit(tx)}

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { colors } from '../../design/tokens';
+import { colors, radius } from '../../design/tokens';
 import { scanReceiptImage, type OCRResult } from '../../utils/ocr';
 
 interface ScanReceiptCameraProps {
@@ -10,35 +10,69 @@ interface ScanReceiptCameraProps {
 export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const startCamera = async () => {
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setError('Camera not supported on this browser. Use the upload option below.');
+          return;
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         });
+
+        if (cancelled) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          try {
+            await videoRef.current.play();
+          } catch {
+            // autoPlay should handle it
+          }
           setCameraActive(true);
         }
       } catch (err) {
-        setError('Unable to access camera. Please check permissions.');
-        console.error(err);
+        if (!cancelled) {
+          setError('Unable to access camera. Check permissions, or upload a photo instead.');
+          console.error('Camera error:', err);
+        }
       }
     };
 
     startCamera();
 
     return () => {
+      cancelled = true;
       if (videoRef.current?.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
         tracks.forEach(track => track.stop());
       }
     };
   }, []);
+
+  const processImage = async (photoData: string) => {
+    setScanning(true);
+    try {
+      const ocrResult = await scanReceiptImage(photoData);
+      onCapture(photoData, ocrResult);
+    } catch {
+      onCapture(photoData);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -51,17 +85,19 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
     context.drawImage(videoRef.current, 0, 0);
 
     const photoData = canvasRef.current.toDataURL('image/jpeg');
+    await processImage(photoData);
+  };
 
-    setScanning(true);
-    try {
-      const ocrResult = await scanReceiptImage(photoData);
-      onCapture(photoData, ocrResult);
-    } catch {
-      // If OCR fails, proceed with just the photo
-      onCapture(photoData);
-    } finally {
-      setScanning(false);
-    }
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const photoData = reader.result as string;
+      await processImage(photoData);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -74,7 +110,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
         bottom: 0,
         backgroundColor: '#0E1726',
         color: 'white',
-        zIndex: 999,
+        zIndex: 1200,
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -105,7 +141,7 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
         <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
           Scan receipt
         </h2>
-        <div style={{ fontSize: '14px', opacity: 0.5 }}>Flash</div>
+        <div style={{ width: '58px' }} />
       </div>
 
       {/* Hint */}
@@ -120,10 +156,10 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
           fontWeight: 600,
         }}
       >
-        {scanning ? 'Reading receipt...' : 'Hold steady — we\'ll snap it for you'}
+        {scanning ? 'Reading receipt...' : cameraActive ? 'Hold steady and tap the button to capture' : 'Upload a receipt photo'}
       </div>
 
-      {/* Camera feed */}
+      {/* Camera feed or upload fallback */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative' }}>
         {cameraActive ? (
           <>
@@ -131,15 +167,17 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
               ref={videoRef}
               autoPlay
               playsInline
+              muted
               style={{
                 maxWidth: '100%',
                 maxHeight: '100%',
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
+                borderRadius: '12px',
               }}
             />
-            {/* Corner brackets */}
+            {/* Frame overlay */}
             <div
               style={{
                 position: 'absolute',
@@ -171,50 +209,85 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
             )}
           </>
         ) : (
-          <div style={{ textAlign: 'center' }}>
-            <p>{error || 'Initializing camera...'}</p>
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            {error && (
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '24px', lineHeight: 1.5 }}>
+                {error}
+              </p>
+            )}
+            {!error && !scanning && (
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '24px' }}>
+                Initializing camera...
+              </p>
+            )}
           </div>
         )}
       </div>
 
       {/* Bottom controls */}
-      {cameraActive && !scanning && (
+      {!scanning && (
         <div
           style={{
             padding: '20px 22px 40px',
             display: 'flex',
-            justifyContent: 'space-around',
+            flexDirection: 'column',
             alignItems: 'center',
+            gap: '16px',
           }}
         >
-          <div style={{ width: '58px' }} />
-
-          <button
-            onClick={handleCapture}
-            style={{
-              width: '84px',
-              height: '84px',
-              borderRadius: '50%',
-              backgroundColor: 'white',
-              border: '6px solid rgba(255, 255, 255, 0.25)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
+          {cameraActive && (
+            <button
+              onClick={handleCapture}
               style={{
-                width: '70px',
-                height: '70px',
+                width: '84px',
+                height: '84px',
                 borderRadius: '50%',
                 backgroundColor: 'white',
-                border: '3px solid #0E1726',
+                border: '6px solid rgba(255, 255, 255, 0.25)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
+            >
+              <div
+                style={{
+                  width: '70px',
+                  height: '70px',
+                  borderRadius: '50%',
+                  backgroundColor: 'white',
+                  border: '3px solid #0E1726',
+                }}
+              />
+            </button>
+          )}
+
+          {/* Upload from gallery — always available */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              color: 'white',
+              border: '1.5px solid rgba(255,255,255,0.3)',
+              borderRadius: `${radius.button}px`,
+              fontSize: '15px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Upload from gallery
           </button>
 
-          <div style={{ width: '58px' }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
         </div>
       )}
 

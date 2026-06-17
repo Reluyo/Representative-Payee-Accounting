@@ -49,11 +49,11 @@ export function Dashboard({
             boxShadow: colors['shadow/card'] || '0 12px 26px rgba(30, 58, 95, 0.24)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: '14px' }}>
-            <span>Steward</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: '14px' }}>
+            <span>Your Account</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
-                Guardian · {userName}
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                Managed by {userName}
               </span>
               {onSettings && (
                 <button
@@ -138,7 +138,7 @@ export function Dashboard({
             padding: '16px',
           }}
         >
-          <div style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>Spent this month</div>
+          <div style={{ fontSize: '15px', color: colors['ink/muted'], fontWeight: 600 }}>Spent this month</div>
           <div style={{ fontSize: '23px', fontWeight: 800, margin: '4px 0 0 0', color: colors['ink/primary'], fontVariantNumeric: 'tabular-nums' }}>
             {formatCurrency(spentThisMonth)}
           </div>
@@ -152,7 +152,7 @@ export function Dashboard({
             padding: '16px',
           }}
         >
-          <div style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>Receipts on file</div>
+          <div style={{ fontSize: '15px', color: colors['ink/muted'], fontWeight: 600 }}>Receipts on file</div>
           <div style={{ fontSize: '23px', fontWeight: 800, margin: '4px 0 0 0', color: colors['ink/primary'] }}>
             {receiptCount} <span style={{ fontSize: '15px', color: colors['ink/muted'], fontWeight: 700 }}>of {recentTransactions.length}</span>
           </div>
@@ -194,7 +194,7 @@ export function Dashboard({
           {recentTransactions.length === 0 ? (
             <div style={{ padding: '28px 16px', textAlign: 'center' }}>
               <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>No entries yet</p>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '6px 0 0 0' }}>Add an expense or scan a receipt to get started</p>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/disabled'], margin: '6px 0 0 0' }}>Add an expense or scan a receipt to get started</p>
             </div>
           ) : (
             recentTransactions.slice(0, 4).map((tx, idx) => {
@@ -232,7 +232,7 @@ export function Dashboard({
                       <div style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>
                         {tx.description}
                       </div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, margin: '1px 0 0 0', color: isIncome ? '#16a34a' : (hasReceipt ? colors['ink/muted'] : colors['warning']) }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, margin: '1px 0 0 0', color: isIncome ? '#16a34a' : (hasReceipt ? colors['ink/muted'] : colors['warning']) }}>
                         {isIncome ? 'Income' : `${tx.category} · ${hasReceipt ? 'Receipt on file' : 'Needs receipt'}`}
                       </div>
                     </div>

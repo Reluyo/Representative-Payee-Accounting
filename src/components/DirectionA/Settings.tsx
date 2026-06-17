@@ -44,7 +44,7 @@ export function Settings({ onDataImported }: SettingsProps) {
     if (!file) return;
 
     const confirmed = window.confirm(
-      'Warning: Importing will ADD the backup data to your existing data. If you import a file that overlaps with current data, you may get duplicate entries.\n\nTo replace all data, choose "Clear & Replace" option below instead.\n\nContinue with merge import?'
+      'This will add the backup data to what you already have. If you load the same backup twice, you may see duplicate entries.\n\nTo start fresh from a backup instead, use "Delete Everything & Restore from Backup" below.\n\nContinue?'
     );
 
     if (!confirmed) {
@@ -75,7 +75,7 @@ export function Settings({ onDataImported }: SettingsProps) {
       if (!file) return;
 
       const confirmed = window.confirm(
-        'WARNING: This will permanently delete ALL current data and replace it with the backup file. This cannot be undone.\n\nAre you absolutely sure?'
+        'WARNING: This will delete all your current data and replace it with the backup file. You cannot undo this.\n\nAre you sure?'
       );
       if (!confirmed) return;
 
@@ -152,7 +152,7 @@ export function Settings({ onDataImported }: SettingsProps) {
             marginBottom: '10px',
           }}
         >
-          Merge from Backup
+          Restore Backup (Keep Current Data)
         </button>
 
         <button
@@ -169,7 +169,7 @@ export function Settings({ onDataImported }: SettingsProps) {
             cursor: 'pointer',
           }}
         >
-          Clear & Replace from Backup
+          Delete Everything & Restore from Backup
         </button>
 
         <input
@@ -180,7 +180,7 @@ export function Settings({ onDataImported }: SettingsProps) {
           style={{ display: 'none' }}
         />
 
-        <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '16px 0 0 0', textAlign: 'center' }}>
+        <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/disabled'], margin: '16px 0 0 0', textAlign: 'center' }}>
           All data is stored on your device. Export your backup regularly and save it to a cloud drive or email it to yourself.
         </p>
       </div>
@@ -198,8 +198,8 @@ export function Settings({ onDataImported }: SettingsProps) {
         <h3 style={{ fontSize: '19px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginBottom: '4px' }}>
           AI Receipt Scanning
         </h3>
-        <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/muted'], margin: '0 0 16px 0', lineHeight: 1.5 }}>
-          Optionally use Google Gemini to improve receipt data extraction. Free tier: 15 requests/min, 1M tokens/day.
+        <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], margin: '0 0 16px 0', lineHeight: 1.5 }}>
+          Optionally use Google Gemini to improve receipt reading. The free plan allows 15 scans per minute.
         </p>
 
         <label style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
@@ -260,8 +260,8 @@ export function Settings({ onDataImported }: SettingsProps) {
           {keySaved ? 'Saved!' : 'Save API Key'}
         </button>
 
-        <p style={{ fontSize: '12px', fontWeight: 600, color: colors['ink/disabled'], margin: '12px 0 0 0', lineHeight: 1.5 }}>
-          Your key is stored only on this device. Only the extracted receipt text is sent to Google — never the photo. If extraction confidence is low, you'll be prompted to retry with the image or edit manually.
+        <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/disabled'], margin: '12px 0 0 0', lineHeight: 1.5 }}>
+          Your key is stored only on this device. Only the receipt text is sent to Google, never the photo. If the scan is unclear, you can retry or type the details yourself.
         </p>
       </div>
 
@@ -280,7 +280,7 @@ export function Settings({ onDataImported }: SettingsProps) {
         <p style={{ fontSize: '15px', fontWeight: 600, color: colors['ink/muted'], margin: 0 }}>
           Representative Payee Accounting
         </p>
-        <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '8px 0 0 0' }}>
+        <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/disabled'], margin: '8px 0 0 0' }}>
           Version 1.0.0
         </p>
         <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], margin: '16px 0 0 0', lineHeight: 1.6 }}>

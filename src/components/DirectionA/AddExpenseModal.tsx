@@ -373,11 +373,11 @@ export function AddExpenseModal({
 
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>
-              {txType === 'income' ? 'Source / Description' : 'Merchant / Description'}
+              {txType === 'income' ? 'Where did the money come from?' : 'Where did you spend it?'}
             </label>
             <input
               type="text"
-              placeholder={txType === 'income' ? 'e.g., SSA Deposit, Pension' : 'e.g., Whole Foods, Pharmacy'}
+              placeholder={txType === 'income' ? 'SSA Deposit, Pension, etc.' : 'Whole Foods, Pharmacy, etc.'}
               value={merchant}
               onChange={e => setMerchant(e.target.value)}
               style={inputStyle}

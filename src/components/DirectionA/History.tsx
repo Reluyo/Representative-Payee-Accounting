@@ -96,7 +96,7 @@ export function History({ accountName, transactions, onEdit, onDelete }: History
             >
               {filter === 'this-month' && 'This month'}
               {filter === 'all' && 'All'}
-              {filter === 'flagged' && 'Flagged'}
+              {filter === 'flagged' && 'Missing Receipts'}
             </button>
           ))}
         </div>
@@ -179,7 +179,7 @@ export function History({ accountName, transactions, onEdit, onDelete }: History
                     <div style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {tx.description}
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, margin: '1px 0 0 0', color: isIncome ? '#16a34a' : (hasReceipt ? colors['ink/muted'] : colors['warning']) }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, margin: '1px 0 0 0', color: isIncome ? '#16a34a' : (hasReceipt ? colors['ink/muted'] : colors['warning']) }}>
                       {isIncome ? 'Income' : `${tx.category} · ${hasReceipt ? 'Receipt on file' : 'Needs receipt'}`}
                     </div>
                   </div>
@@ -225,7 +225,7 @@ export function History({ accountName, transactions, onEdit, onDelete }: History
                             fontFamily: 'inherit',
                           }}
                         >
-                          Del
+                          Delete
                         </button>
                       )}
                     </div>

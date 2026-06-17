@@ -62,7 +62,7 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d={icons[tab]} />
           </svg>
-          <span style={{ fontSize: '11px', fontWeight: activeTab === tab ? 800 : 700, lineHeight: 1 }}>
+          <span style={{ fontSize: '13px', fontWeight: activeTab === tab ? 800 : 700, lineHeight: 1 }}>
             {labels[tab]}
           </span>
         </button>

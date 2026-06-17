@@ -103,7 +103,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
           Statement of Account
         </div>
         <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.72)', marginTop: '4px', fontWeight: 600 }}>
-          Conservatorship of {account.name}
+          Account for {account.name}
         </div>
       </div>
 
@@ -112,7 +112,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
         {/* Period indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 4px 14px' }}>
           <div style={{ width: '28px', height: '3px', background: colors['brand/accent'], borderRadius: '2px' }} />
-          <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: colors['ink/muted'] }}>
+          <span style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: colors['ink/muted'] }}>
             {formatDate(new Date(startDate))} – {formatDate(new Date(endDate))}
           </span>
         </div>
@@ -171,7 +171,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
               <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(openingBalance)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
-              <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Total disbursements</span>
+              <span style={{ fontSize: '16px', color: colors['ink/muted'], fontWeight: 600 }}>Total spent</span>
               <span style={{ fontSize: '16px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(totalSpent)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 0', borderBottom: `1px solid ${colors['border/divider']}` }}>
@@ -197,7 +197,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
             }}
           >
             <div style={{ backgroundColor: colors['brand/tint'], padding: '12px 18px', fontFamily: "'Source Serif 4', serif", fontSize: '16px', fontWeight: 700, borderBottom: `1px solid ${colors['border/hairline']}` }}>
-              Disbursements by category
+              Expenses by category
             </div>
             <div style={{ padding: '2px 18px' }}>
               {categoryList.map(({ cat, amount, pct }) => (
@@ -259,7 +259,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
         {/* Footnote */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 0 4px' }}>
           <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: colors['brand/accent'] }} />
-          <span style={{ fontSize: '13px', color: colors['ink/muted'], fontWeight: 600 }}>
+          <span style={{ fontSize: '14px', color: colors['ink/muted'], fontWeight: 600 }}>
             Prepared {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             {receiptCount > 0 ? ` · ${receiptCount} receipt${receiptCount !== 1 ? 's' : ''} attached` : ' · No receipts attached'}
           </span>

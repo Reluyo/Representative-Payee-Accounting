@@ -3,6 +3,13 @@ import type { Account, Category, Transaction } from '../../types';
 import type { OCRResult } from '../../utils/ocr';
 import { colors, spacing, radius } from '../../design/tokens';
 import { createTransaction, updateTransaction } from '../../db/queries';
+import {
+  isGeminiConfigured,
+  isLowConfidence,
+  extractWithGeminiText,
+  extractWithGeminiImage,
+  type GeminiExtractionResult,
+} from '../../utils/gemini';
 
 interface AddExpenseModalProps {
   categories: Category[];
@@ -63,22 +70,98 @@ export function AddExpenseModal({
   const [merchant, setMerchant] = useState(editingTransaction?.description ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [aiStatus, setAiStatus] = useState<'idle' | 'extracting' | 'low-confidence' | 'done' | 'error'>('idle');
+  const [aiMessage, setAiMessage] = useState('');
+  const [retryingWithImage, setRetryingWithImage] = useState(false);
 
-  // Pre-fill from OCR when available (only for new transactions)
-  useEffect(() => {
-    if (!ocrResult || isEditing) return;
-    if (ocrResult.vendor && !merchant) setMerchant(ocrResult.vendor);
-    if (ocrResult.amount && !amount) setAmount(String(ocrResult.amount));
-    if (ocrResult.date && !date) {
-      // Try to parse MM/DD/YYYY into YYYY-MM-DD for the date input
-      const parts = ocrResult.date.split(/[\/\-]/);
+  const applyExtraction = (result: GeminiExtractionResult) => {
+    if (result.vendor) setMerchant(result.vendor);
+    if (result.amount) setAmount(String(result.amount));
+    if (result.date && !isNaN(Date.parse(result.date))) setDate(result.date);
+    if (result.category) {
+      const match = categories.find(c => c.name === result.category);
+      if (match) setCategory(match.name);
+    }
+  };
+
+  const applyOcrFallback = (ocr: OCRResult) => {
+    if (ocr.vendor && !merchant) setMerchant(ocr.vendor);
+    if (ocr.amount && !amount) setAmount(String(ocr.amount));
+    if (ocr.date && !date) {
+      const parts = ocr.date.split(/[\/\-]/);
       if (parts.length === 3) {
         const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
         const formatted = `${year}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
         if (!isNaN(Date.parse(formatted))) setDate(formatted);
       }
     }
+  };
+
+  // AI-enhanced extraction: try Gemini text first, fall back to regex
+  useEffect(() => {
+    if (!ocrResult || isEditing) return;
+
+    const runAiExtraction = async () => {
+      if (isGeminiConfigured() && navigator.onLine) {
+        setAiStatus('extracting');
+        setAiMessage('AI is reading your receipt...');
+        try {
+          const result = await extractWithGeminiText(ocrResult.text);
+          applyExtraction(result);
+          if (!result.amount && !result.vendor) {
+            setAiStatus('low-confidence');
+            setAiMessage('AI couldn\'t extract the details from the text. You can retry with the photo or enter the details manually.');
+          } else {
+            setAiStatus('done');
+            setAiMessage('AI extracted receipt details');
+          }
+          return;
+        } catch {
+          // Gemini failed — fall back to regex
+        }
+      }
+
+      // Fall back to regex extraction
+      applyOcrFallback(ocrResult);
+
+      if (isLowConfidence(ocrResult)) {
+        if (isGeminiConfigured()) {
+          setAiStatus('low-confidence');
+          setAiMessage('Low scan confidence. You can retry with the photo for better results, or edit the fields manually.');
+        } else {
+          setAiStatus('low-confidence');
+          setAiMessage('Low scan confidence. Add a Gemini API key in Settings for AI-powered extraction, or edit the fields manually.');
+        }
+      } else {
+        setAiStatus('idle');
+      }
+    };
+
+    runAiExtraction();
   }, [ocrResult]);
+
+  const handleRetryWithImage = async () => {
+    if (!photoData) return;
+    setRetryingWithImage(true);
+    setAiStatus('extracting');
+    setAiMessage('AI is analyzing the receipt photo...');
+    try {
+      const result = await extractWithGeminiImage(photoData);
+      applyExtraction(result);
+      if (!result.amount && !result.vendor) {
+        setAiStatus('low-confidence');
+        setAiMessage('AI couldn\'t extract details from the image either. Please enter the details manually.');
+      } else {
+        setAiStatus('done');
+        setAiMessage('AI extracted details from the photo');
+      }
+    } catch {
+      setAiStatus('error');
+      setAiMessage('Failed to analyze the photo. Please enter details manually.');
+    } finally {
+      setRetryingWithImage(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,9 +306,57 @@ export function AddExpenseModal({
         {photoData && (
           <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${colors['border/hairline']}` }}>
             <img src={photoData} alt="Receipt" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '150px', objectFit: 'cover' }} />
-            <p style={{ fontSize: '12px', fontWeight: 600, color: ocrResult ? '#16a34a' : colors['ink/muted'], padding: '8px 12px', margin: 0 }}>
-              {ocrResult ? `Receipt scanned — ${Math.round(ocrResult.confidence * 100)}% confidence` : 'Receipt photo attached'}
-            </p>
+            <div style={{ padding: '8px 12px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: ocrResult ? '#16a34a' : colors['ink/muted'], margin: 0 }}>
+                {ocrResult ? `Receipt scanned — ${Math.round(ocrResult.confidence * 100)}% confidence` : 'Receipt photo attached'}
+              </p>
+
+              {/* AI extraction status */}
+              {aiStatus === 'extracting' && (
+                <p style={{ fontSize: '12px', fontWeight: 700, color: colors['brand/primary'], margin: '6px 0 0 0' }}>
+                  {aiMessage}
+                </p>
+              )}
+
+              {aiStatus === 'done' && (
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#16a34a', margin: '6px 0 0 0' }}>
+                  {aiMessage}
+                </p>
+              )}
+
+              {aiStatus === 'error' && (
+                <p style={{ fontSize: '12px', fontWeight: 700, color: colors['warning'], margin: '6px 0 0 0' }}>
+                  {aiMessage}
+                </p>
+              )}
+
+              {aiStatus === 'low-confidence' && (
+                <div style={{ marginTop: '8px' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: colors['warning'], margin: '0 0 8px 0', lineHeight: 1.4 }}>
+                    {aiMessage}
+                  </p>
+                  {isGeminiConfigured() && !retryingWithImage && (
+                    <button
+                      type="button"
+                      onClick={handleRetryWithImage}
+                      style={{
+                        padding: '8px 14px',
+                        backgroundColor: colors['warning/bg'],
+                        color: colors['warning'],
+                        border: `1.5px solid ${colors['warning']}`,
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Retry with photo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -1,6 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { colors, spacing } from '../../design/tokens';
 import { exportToJSON, importFromJSON, clearAllData } from '../../db/queries';
+import { getGeminiApiKey, setGeminiApiKey } from '../../utils/gemini';
 
 interface SettingsProps {
   onDataImported: () => void;
@@ -8,6 +9,15 @@ interface SettingsProps {
 
 export function Settings({ onDataImported }: SettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [apiKey, setApiKey] = useState(getGeminiApiKey);
+  const [showKey, setShowKey] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
+
+  const handleSaveApiKey = () => {
+    setGeminiApiKey(apiKey);
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2000);
+  };
 
   const handleExport = async () => {
     try {
@@ -172,6 +182,86 @@ export function Settings({ onDataImported }: SettingsProps) {
 
         <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '16px 0 0 0', textAlign: 'center' }}>
           All data is stored on your device. Export your backup regularly and save it to a cloud drive or email it to yourself.
+        </p>
+      </div>
+
+      {/* AI Receipt Scanning */}
+      <div
+        style={{
+          backgroundColor: colors['surface/card'],
+          borderRadius: '24px',
+          padding: '20px',
+          border: `1px solid ${colors['border/hairline']}`,
+          marginBottom: '16px',
+        }}
+      >
+        <h3 style={{ fontSize: '19px', fontWeight: 800, color: colors['ink/primary'], margin: 0, marginBottom: '4px' }}>
+          AI Receipt Scanning
+        </h3>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/muted'], margin: '0 0 16px 0', lineHeight: 1.5 }}>
+          Optionally use Google Gemini to improve receipt data extraction. Free tier: 15 requests/min, 1M tokens/day.
+        </p>
+
+        <label style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], display: 'block', marginBottom: '8px' }}>
+          Gemini API Key
+        </label>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            placeholder="Enter your Gemini API key"
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              fontSize: '14px',
+              fontWeight: 600,
+              border: `1px solid ${colors['border/hairline']}`,
+              borderRadius: '12px',
+              color: colors['ink/primary'],
+              backgroundColor: '#fff',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowKey(!showKey)}
+            style={{
+              padding: '10px 12px',
+              backgroundColor: colors['brand/tint'],
+              color: colors['brand/primary'],
+              border: `1px solid ${colors['border/hairline']}`,
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              flexShrink: 0,
+            }}
+          >
+            {showKey ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        <button
+          onClick={handleSaveApiKey}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            backgroundColor: keySaved ? colors['positive'] : colors['brand/primary'],
+            color: 'white',
+            border: 'none',
+            borderRadius: '16px',
+            fontSize: '15px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {keySaved ? 'Saved!' : 'Save API Key'}
+        </button>
+
+        <p style={{ fontSize: '12px', fontWeight: 600, color: colors['ink/disabled'], margin: '12px 0 0 0', lineHeight: 1.5 }}>
+          Your key is stored only on this device. Only the extracted receipt text is sent to Google — never the photo. If extraction confidence is low, you'll be prompted to retry with the image or edit manually.
         </p>
       </div>
 

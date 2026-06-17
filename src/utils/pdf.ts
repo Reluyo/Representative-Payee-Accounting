@@ -1,6 +1,19 @@
 import jsPDF from 'jspdf';
-import type { DateRangeReport } from '../types';
+import type { DateRangeReport, Receipt } from '../types';
 import { formatCurrency, formatDate, generateReferenceNumber } from './formatting';
+
+async function receiptToBase64(receipt: Receipt): Promise<string | null> {
+  if (receipt.blobData) {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(receipt.blobData!);
+    });
+  }
+  if (receipt.data?.startsWith('data:image')) return receipt.data;
+  return null;
+}
 
 export async function generateReportPDF(report: DateRangeReport, accountName: string): Promise<void> {
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -126,7 +139,8 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
     addText('Supporting documents in transaction date order', 10);
     yPosition += 5;
 
-    report.receiptAppendix.forEach((receipt, index) => {
+    for (let index = 0; index < report.receiptAppendix.length; index++) {
+      const receipt = report.receiptAppendix[index];
       const refNum = generateReferenceNumber(index);
 
       if (yPosition > pageHeight - 50) {
@@ -146,8 +160,9 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
       }
       yPosition += 5;
 
-      // Try to add receipt image if available
-      if (receipt.data && receipt.data.startsWith('data:image')) {
+      // Try to add receipt image if available (handles both Blob and legacy base64)
+      const imgData = await receiptToBase64(receipt);
+      if (imgData) {
         try {
           if (yPosition > pageHeight - 60) {
             pdf.addPage();
@@ -155,7 +170,7 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
           }
           const maxWidth = contentWidth;
           const maxHeight = 50;
-          pdf.addImage(receipt.data, 'JPEG', margin, yPosition, maxWidth, maxHeight);
+          pdf.addImage(imgData, 'JPEG', margin, yPosition, maxWidth, maxHeight);
           yPosition += maxHeight + 5;
         } catch (error) {
           console.error('Failed to add image to PDF', error);
@@ -163,7 +178,7 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
       }
 
       yPosition += 5;
-    });
+    }
   }
 
   // Add notes if present

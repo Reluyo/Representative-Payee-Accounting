@@ -1,6 +1,30 @@
-import type { Transaction } from '../../types';
+import { useEffect, useState } from 'react';
+import type { Receipt, Transaction } from '../../types';
 import { colors, spacing } from '../../design/tokens';
 import { formatDate, formatCurrency } from '../../utils/formatting';
+
+function ReceiptImage({ receipt, alt }: { receipt: Receipt; alt: string }) {
+  const [src, setSrc] = useState('');
+
+  useEffect(() => {
+    if (receipt.blobData) {
+      const url = URL.createObjectURL(receipt.blobData);
+      setSrc(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (receipt.data) {
+      setSrc(receipt.data);
+    }
+  }, [receipt]);
+
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{ width: '100%', height: '140px', objectFit: 'cover', backgroundColor: colors['bg/page'], display: 'block' }}
+    />
+  );
+}
 
 interface ReceiptsGalleryProps {
   accountName: string;
@@ -62,18 +86,8 @@ export function ReceiptsGallery({ accountName, transactions }: ReceiptsGalleryPr
                 }}
               >
                 {/* Receipt image */}
-                {receipt.data && (
-                  <img
-                    src={receipt.data}
-                    alt={receipt.fileName}
-                    style={{
-                      width: '100%',
-                      height: '140px',
-                      objectFit: 'cover',
-                      backgroundColor: colors['bg/page'],
-                      display: 'block',
-                    }}
-                  />
+                {(receipt.blobData || receipt.data) && (
+                  <ReceiptImage receipt={receipt} alt={receipt.fileName} />
                 )}
 
                 {/* Receipt info */}

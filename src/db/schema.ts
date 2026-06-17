@@ -1,15 +1,12 @@
 import Dexie, { type Table } from 'dexie';
-import type { Account, Category, Receipt, Transaction, MonthlyReport, DateRangeReport } from '../types';
-import type { StoredBackup } from '../hooks/useAutoBackup';
+import type { Account, Category, Receipt, Transaction, DateRangeReport } from '../types';
 
 export class AccountingDB extends Dexie {
   accounts!: Table<Account>;
   categories!: Table<Category>;
   transactions!: Table<Transaction>;
   receipts!: Table<Receipt>;
-  monthlyReports!: Table<MonthlyReport>;
   dateRangeReports!: Table<DateRangeReport>;
-  backups!: Table<StoredBackup>;
 
   constructor() {
     super('RepresentativePayeeDB');
@@ -21,7 +18,6 @@ export class AccountingDB extends Dexie {
       monthlyReports: '++id, accountId, [year+month]',
       dateRangeReports: '++id, accountId, [startDate+endDate]',
     });
-    // Version 2 adds local backup storage
     this.version(2).stores({
       accounts: '++id',
       categories: '++id',
@@ -30,6 +26,16 @@ export class AccountingDB extends Dexie {
       monthlyReports: '++id, accountId, [year+month]',
       dateRangeReports: '++id, accountId, [startDate+endDate]',
       backups: '++id, date',
+    });
+    // Version 3: drop unused tables, add compound index for efficient date-range queries
+    this.version(3).stores({
+      accounts: '++id',
+      categories: '++id',
+      transactions: '++id, accountId, date, [accountId+date]',
+      receipts: '++id, transactionId, referenceNumber',
+      monthlyReports: null,
+      dateRangeReports: '++id, accountId, [startDate+endDate]',
+      backups: null,
     });
   }
 }

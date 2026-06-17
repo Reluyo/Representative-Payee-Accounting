@@ -24,6 +24,7 @@ export interface Receipt {
   fileSize: number;
   uploadedDate: Date;
   data: string;
+  blobData?: Blob;
   originalText: string;
   extractedFields: {
     vendor?: string;
@@ -49,19 +50,6 @@ export interface Transaction {
     timestamp?: Date;
     confidence?: number;
   };
-}
-
-export interface MonthlyReport {
-  id?: number;
-  accountId: number;
-  year: number;
-  month: number;
-  generatedDate: Date;
-  transactions: Transaction[];
-  summary: Record<string, number>;
-  totalIncome: number;
-  totalExpense: number;
-  notes: string;
 }
 
 export interface DateRangeReport {

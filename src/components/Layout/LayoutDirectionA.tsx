@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../../types';
-import { getAccounts, getCategories, exportToJSON, initializeDB } from '../../db/queries';
+import type { OCRResult } from '../../utils/ocr';
+import { getAccounts, getCategories, initializeDB, updateAccount } from '../../db/queries';
 import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
@@ -11,11 +12,12 @@ import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
 import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
 import { AccountSetupDirectionA } from '../Accounts/AccountSetupDirectionA';
 import { useTransactions } from '../../hooks/useTransactions';
+import { useReports } from '../../hooks/useReports';
 import { useAutoBackup } from '../../hooks/useAutoBackup';
 import { BackupBanner } from '../UI/BackupBanner';
 import { colors } from '../../design/tokens';
 
-type Tab = 'home' | 'history' | 'receipts' | 'reports';
+type Tab = 'home' | 'history' | 'receipts' | 'reports' | 'settings';
 
 export function LayoutDirectionA() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -25,11 +27,14 @@ export function LayoutDirectionA() {
   const [loading, setLoading] = useState(true);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | undefined>();
+  const [capturedOCR, setCapturedOCR] = useState<OCRResult | undefined>();
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>();
 
-  const { transactions, addTransaction } = useTransactions(currentAccountId);
-  const { backupReady, pendingBackup, downloadBackup, dismissBanner } = useAutoBackup();
+  const { transactions, fetchTransactions, updateTransaction, deleteTransaction } = useTransactions(currentAccountId);
+  const currentAccount = accounts.find(a => a.id === currentAccountId) ?? null;
+  const { generateAndExportPDF, reportLoading } = useReports(currentAccountId, currentAccount?.name ?? '');
+  const { backupReady, pendingBackup, downloadBackup, dismissBanner, snoozeBanner } = useAutoBackup();
 
   useEffect(() => {
     const initialize = async () => {
@@ -56,7 +61,7 @@ export function LayoutDirectionA() {
     initialize();
   }, []);
 
-  const handleAccountCreated = async (account: Account) => {
+  const handleAccountCreated = async () => {
     const newAccounts = await getAccounts();
     setAccounts(newAccounts);
     if (newAccounts.length === 1) {
@@ -65,6 +70,9 @@ export function LayoutDirectionA() {
   };
 
   const handleAddExpense = () => {
+    setEditingTransaction(undefined);
+    setCapturedPhoto(undefined);
+    setCapturedOCR(undefined);
     setShowAddExpense(true);
   };
 
@@ -72,53 +80,87 @@ export function LayoutDirectionA() {
     setShowCamera(true);
   };
 
-  const handleShowSettings = () => {
-    setShowSettings(true);
-  };
-
-  const handleCameraCapture = (photoData: string) => {
+  const handleCameraCapture = (photoData: string, ocrResult?: OCRResult) => {
     setShowCamera(false);
     setCapturedPhoto(photoData);
+    setCapturedOCR(ocrResult);
+    setEditingTransaction(undefined);
     setShowAddExpense(true);
   };
 
-  const handleGeneratePDF = async () => {
+  const handleEditTransaction = (tx: Transaction) => {
+    setEditingTransaction(tx);
+    setCapturedPhoto(undefined);
+    setCapturedOCR(undefined);
+    setShowAddExpense(true);
+  };
+
+  const handleDeleteTransaction = async (id: number) => {
+    if (!currentAccount) return;
+    // Find the transaction to reverse its effect on balance
+    const tx = transactions.find(t => t.id === id);
+    if (tx) {
+      const delta = tx.type === 'income' ? -tx.amount : tx.amount;
+      await updateAccount(currentAccount.id!, {
+        balance: currentAccount.balance + delta,
+        lastUpdated: new Date(),
+      });
+      const updatedAccounts = await getAccounts();
+      setAccounts(updatedAccounts);
+    }
+    await deleteTransaction(id);
+  };
+
+  const handleGeneratePDF = async (startDate: Date, endDate: Date) => {
     try {
-      const data = await exportToJSON();
-      const now = new Date();
-      const filename = `court_report_${now.toISOString().split('T')[0]}.json`;
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      await generateAndExportPDF(startDate, endDate, '');
     } catch (error) {
       console.error('Failed to generate PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
     }
   };
 
-  const handleEmail = () => {
-    const subject = 'Court Accounting Report - Representative Payee';
-    const body = `I have attached the representative payee accounting report for the court filing.\n\nThis report includes all transactions and supporting receipts for the requested period.`;
-    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoLink;
+  const handleEmail = (startDate: Date, endDate: Date) => {
+    // Generate the PDF first, then prompt the user to attach it
+    handleGeneratePDF(startDate, endDate).then(() => {
+      const subject = 'Court Accounting Report - Representative Payee';
+      const body =
+        `Please find the attached accounting report for the representative payee filing.\n\n` +
+        `Period: ${startDate.toLocaleDateString()} – ${endDate.toLocaleDateString()}\n` +
+        `Account: ${currentAccount?.name ?? ''}\n\n` +
+        `The PDF was downloaded to your device. Please attach it to this email before sending.`;
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
   };
 
-  const handleExpenseSaved = async () => {
-    // Refetch all data to ensure UI updates
+  const handleExpenseSaved = async (amount: number, type: 'income' | 'expense') => {
+    if (!currentAccount?.id) return;
+
+    // Update the account balance
+    const delta = type === 'income' ? amount : -amount;
+    await updateAccount(currentAccount.id, {
+      balance: currentAccount.balance + delta,
+      lastUpdated: new Date(),
+    });
+
+    const updatedAccounts = await getAccounts();
+    setAccounts(updatedAccounts);
+    // Refetch transactions to pick up the new/edited entry
+    await fetchTransactions();
+  };
+
+  const handleDataImported = async () => {
+    // Reload everything after import
     const [updatedAccounts, updatedCategories] = await Promise.all([
       getAccounts(),
       getCategories(),
     ]);
     setAccounts(updatedAccounts);
     setCategories(updatedCategories);
-
-    // Keep current account selected
-    if (currentAccountId) {
-      setCurrentAccountId(currentAccountId);
+    if (updatedAccounts.length > 0) {
+      setCurrentAccountId(updatedAccounts[0].id ?? null);
     }
+    await fetchTransactions();
   };
 
   if (loading) {
@@ -128,8 +170,6 @@ export function LayoutDirectionA() {
       </div>
     );
   }
-
-  const currentAccount = accounts.find(a => a.id === currentAccountId);
 
   if (accounts.length === 0) {
     return <AccountSetupDirectionA onAccountCreated={handleAccountCreated} />;
@@ -144,7 +184,18 @@ export function LayoutDirectionA() {
             backup={pendingBackup}
             onDownload={downloadBackup}
             onDismiss={dismissBanner}
+            onSnooze={snoozeBanner}
           />
+        </div>
+      )}
+
+      {/* PDF generation loading overlay */}
+      {reportLoading && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '28px 32px', textAlign: 'center' }}>
+            <p style={{ fontSize: '17px', fontWeight: 700, color: colors['ink/primary'], margin: 0 }}>Generating PDF...</p>
+            <p style={{ fontSize: '14px', color: colors['ink/muted'], margin: '8px 0 0 0', fontWeight: 600 }}>This may take a moment for large reports</p>
+          </div>
         </div>
       )}
 
@@ -152,16 +203,24 @@ export function LayoutDirectionA() {
       {activeTab === 'home' && currentAccount && (
         <Dashboard
           account={currentAccount}
+          accounts={accounts}
           userName={currentAccount.name.split(' ')[0] || 'Friend'}
-          recentTransactions={transactions.slice(0, 4)}
+          recentTransactions={transactions}
           onAddExpense={handleAddExpense}
           onScanReceipt={handleScanReceipt}
-          onSettings={handleShowSettings}
+          onSettings={() => setActiveTab('settings')}
+          onViewAll={() => setActiveTab('history')}
+          onAccountChange={setCurrentAccountId}
         />
       )}
 
       {activeTab === 'history' && currentAccount && (
-        <History accountName={currentAccount.name} transactions={transactions} />
+        <History
+          accountName={currentAccount.name}
+          transactions={transactions}
+          onEdit={handleEditTransaction}
+          onDelete={handleDeleteTransaction}
+        />
       )}
 
       {activeTab === 'receipts' && currentAccount && (
@@ -173,75 +232,41 @@ export function LayoutDirectionA() {
 
       {activeTab === 'reports' && currentAccount && (
         <CourtReport
-          accountName={currentAccount.name}
+          account={currentAccount}
           transactions={transactions}
           onGeneratePDF={handleGeneratePDF}
           onEmail={handleEmail}
         />
       )}
 
-      {/* Settings View - accessed via overlay */}
-      {showSettings && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1001 }}>
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              zIndex: 1000,
-            }}
-            onClick={() => setShowSettings(false)}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 1001,
-              overflowY: 'auto',
-              backgroundColor: colors['bg/page'],
-            }}
-          >
-            <button
-              onClick={() => setShowSettings(false)}
-              style={{
-                position: 'fixed',
-                top: '16px',
-                left: '16px',
-                fontSize: '28px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                zIndex: 1002,
-              }}
-            >
-              ←
-            </button>
-            <Settings onDataImported={() => setShowSettings(false)} />
-          </div>
-        </div>
+      {activeTab === 'settings' && (
+        <Settings onDataImported={handleDataImported} />
       )}
 
       {/* Modals */}
-      {showAddExpense && (
+      {showAddExpense && currentAccount && (
         <AddExpenseModal
           categories={categories}
-          accountId={currentAccountId || 0}
+          account={currentAccount}
           photoData={capturedPhoto}
+          ocrResult={capturedOCR}
+          editingTransaction={editingTransaction}
           onClose={() => {
             setShowAddExpense(false);
             setCapturedPhoto(undefined);
+            setCapturedOCR(undefined);
+            setEditingTransaction(undefined);
           }}
           onSaved={handleExpenseSaved}
         />
       )}
 
-      {showCamera && <ScanReceiptCamera onCapture={handleCameraCapture} onCancel={() => setShowCamera(false)} />}
+      {showCamera && (
+        <ScanReceiptCamera
+          onCapture={handleCameraCapture}
+          onCancel={() => setShowCamera(false)}
+        />
+      )}
 
       {/* Bottom tab bar */}
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />

@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { exportToJSON } from '../db/queries';
-import { db } from '../db/schema';
 
 const BACKUP_INTERVAL_DAYS = 30;
-const MAX_STORED_BACKUPS = 3;
 const LAST_BACKUP_KEY = 'lastBackupDate';
+const SNOOZE_UNTIL_KEY = 'backupSnoozeUntil';
 
 export interface StoredBackup {
-  id?: number;
   date: Date;
   filename: string;
   data: string;
@@ -19,9 +17,18 @@ export function useAutoBackup() {
   const [pendingBackup, setPendingBackup] = useState<StoredBackup | null>(null);
 
   const checkAndCreateBackup = useCallback(async () => {
+    const now = new Date();
+
+    // Respect snooze — if snoozed until a future date, skip
+    const snoozeStr = localStorage.getItem(SNOOZE_UNTIL_KEY);
+    if (snoozeStr) {
+      const snoozeUntil = new Date(snoozeStr);
+      if (now < snoozeUntil) return;
+      localStorage.removeItem(SNOOZE_UNTIL_KEY);
+    }
+
     const lastBackupStr = localStorage.getItem(LAST_BACKUP_KEY);
     const lastBackup = lastBackupStr ? new Date(lastBackupStr) : null;
-    const now = new Date();
 
     const daysSinceLastBackup = lastBackup
       ? (now.getTime() - lastBackup.getTime()) / (1000 * 60 * 60 * 24)
@@ -41,15 +48,6 @@ export function useAutoBackup() {
         transactionCount: data.transactions?.length ?? 0,
       };
 
-      // Store in IndexedDB, keeping only the most recent backups
-      await db.table('backups').add(backup);
-      const allBackups = await db.table('backups').orderBy('date').toArray();
-      if (allBackups.length > MAX_STORED_BACKUPS) {
-        const toDelete = allBackups.slice(0, allBackups.length - MAX_STORED_BACKUPS);
-        await db.table('backups').bulkDelete(toDelete.map((b: StoredBackup) => b.id!));
-      }
-
-      localStorage.setItem(LAST_BACKUP_KEY, now.toISOString());
       setPendingBackup(backup);
       setBackupReady(true);
     } catch (error) {
@@ -69,6 +67,8 @@ export function useAutoBackup() {
     a.download = backup.filename;
     a.click();
     URL.revokeObjectURL(url);
+    // Mark backup as completed so it doesn't re-prompt
+    localStorage.setItem(LAST_BACKUP_KEY, new Date().toISOString());
     setBackupReady(false);
     setPendingBackup(null);
   }, []);
@@ -78,13 +78,11 @@ export function useAutoBackup() {
     setPendingBackup(null);
   }, []);
 
-  return { backupReady, pendingBackup, downloadBackup, dismissBanner };
-}
+  const snoozeBanner = useCallback((untilDate: Date) => {
+    localStorage.setItem(SNOOZE_UNTIL_KEY, untilDate.toISOString());
+    setBackupReady(false);
+    setPendingBackup(null);
+  }, []);
 
-export async function getStoredBackups(): Promise<StoredBackup[]> {
-  try {
-    return await db.table('backups').orderBy('date').reverse().toArray();
-  } catch {
-    return [];
-  }
+  return { backupReady, pendingBackup, downloadBackup, dismissBanner, snoozeBanner };
 }

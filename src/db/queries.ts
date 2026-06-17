@@ -36,15 +36,14 @@ export async function createTransaction(transaction: Omit<Transaction, 'id'>) {
 }
 
 export async function getTransactions(accountId: number, startDate?: Date, endDate?: Date) {
-  let query = db.transactions.where('accountId').equals(accountId);
-
   if (startDate && endDate) {
-    return query
-      .filter(t => t.date >= startDate && t.date <= endDate)
+    return db.transactions
+      .where('[accountId+date]')
+      .between([accountId, startDate], [accountId, endDate], true, true)
       .toArray();
   }
 
-  return query.toArray();
+  return db.transactions.where('accountId').equals(accountId).toArray();
 }
 
 export async function getTransaction(id: number) {
@@ -70,12 +69,12 @@ export async function getReceipts(transactionId: number) {
   return db.receipts.where('transactionId').equals(transactionId).toArray();
 }
 
+// Uses the transactionId index rather than loading all receipts into memory
 export async function getReceiptsByDateRange(accountId: number, startDate: Date, endDate: Date) {
   const transactions = await getTransactions(accountId, startDate, endDate);
-  const transactionIds = transactions.map(t => t.id!);
-
-  const receipts = await db.receipts.toArray();
-  return receipts.filter(r => r.transactionId && transactionIds.includes(r.transactionId));
+  const transactionIds = transactions.map(t => t.id!).filter(Boolean);
+  if (transactionIds.length === 0) return [];
+  return db.receipts.where('transactionId').anyOf(transactionIds).toArray();
 }
 
 export async function getCategories() {
@@ -111,20 +110,19 @@ export async function generateDateRangeReport(
     }
   });
 
-  const receiptAppendix = await getReceiptsByDateRange(accountId, startDate, endDate);
-  receiptAppendix.sort((a, b) => {
-    const txA = transactions.find(t => t.id === a.transactionId);
-    const txB = transactions.find(t => t.id === b.transactionId);
-    if (!txA || !txB) return 0;
-    return txA.date.getTime() - txB.date.getTime();
-  });
+  // Pull receipts from the transaction's embedded receipts array
+  // (avoids duplicate storage issue and works regardless of receipts table state)
+  const receiptAppendix: Receipt[] = transactions
+    .filter(t => t.receipts && t.receipts.length > 0)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .flatMap(t => t.receipts.map(r => ({ ...r, transactionId: t.id })));
 
   const report: DateRangeReport = {
     accountId,
     startDate,
     endDate,
     generatedDate: new Date(),
-    transactions: transactions.sort((a, b) => b.date.getTime() - a.date.getTime()),
+    transactions: transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     summary,
     totalIncome,
     totalExpense,
@@ -141,6 +139,7 @@ export async function exportToJSON() {
   const transactions = await db.transactions.toArray();
   const receipts = await db.receipts.toArray();
   const categories = await db.categories.toArray();
+  const dateRangeReports = await db.dateRangeReports.toArray();
 
   return {
     version: 1,
@@ -149,7 +148,18 @@ export async function exportToJSON() {
     transactions,
     receipts,
     categories,
+    dateRangeReports,
   };
+}
+
+export async function clearAllData() {
+  await db.transaction('rw', [db.accounts, db.transactions, db.receipts, db.categories, db.dateRangeReports], async () => {
+    await db.accounts.clear();
+    await db.transactions.clear();
+    await db.receipts.clear();
+    await db.categories.clear();
+    await db.dateRangeReports.clear();
+  });
 }
 
 export async function importFromJSON(data: any) {
@@ -157,7 +167,7 @@ export async function importFromJSON(data: any) {
     throw new Error('Unsupported backup format version');
   }
 
-  await db.transaction('rw', db.accounts, db.transactions, db.receipts, db.categories, async () => {
+  await db.transaction('rw', [db.accounts, db.transactions, db.receipts, db.categories, db.dateRangeReports], async () => {
     if (data.accounts) {
       await db.accounts.bulkAdd(data.accounts);
     }
@@ -172,6 +182,9 @@ export async function importFromJSON(data: any) {
       if (existing.length === 0) {
         await db.categories.bulkAdd(data.categories);
       }
+    }
+    if (data.dateRangeReports) {
+      await db.dateRangeReports.bulkAdd(data.dateRangeReports);
     }
   });
 }

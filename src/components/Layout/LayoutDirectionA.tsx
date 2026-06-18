@@ -6,6 +6,7 @@ import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
 import { ReceiptsGallery } from '../DirectionA/ReceiptsGallery';
+import { Settings } from '../DirectionA/Settings';
 import { BottomTabBar } from './BottomTabBar';
 import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
 import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
@@ -29,6 +30,7 @@ export function LayoutDirectionA() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | undefined>();
   const [capturedOCR, setCapturedOCR] = useState<OCRResult | undefined>();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>();
+  const [showSettings, setShowSettings] = useState(false);
   const [addReceiptToTransaction, setAddReceiptToTransaction] = useState<Transaction | undefined>();
 
   const { transactions, fetchTransactions, updateTransaction, deleteTransaction } = useTransactions(currentAccountId);
@@ -186,6 +188,19 @@ export function LayoutDirectionA() {
     await fetchTransactions();
   };
 
+  const handleDataImported = async () => {
+    const [updatedAccounts, updatedCategories] = await Promise.all([
+      getAccounts(),
+      getCategories(),
+    ]);
+    setAccounts(updatedAccounts);
+    setCategories(updatedCategories);
+    if (updatedAccounts.length > 0) {
+      setCurrentAccountId(updatedAccounts[0].id ?? null);
+    }
+    await fetchTransactions();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: colors['bg/page'] }}>
@@ -231,6 +246,7 @@ export function LayoutDirectionA() {
           recentTransactions={transactions}
           onAddExpense={handleAddExpense}
           onScanReceipt={handleScanReceipt}
+          onSettings={() => setShowSettings(true)}
           onViewAll={() => setActiveTab('history')}
           onAccountChange={setCurrentAccountId}
         />
@@ -285,6 +301,25 @@ export function LayoutDirectionA() {
           onCapture={handleCameraCapture}
           onCancel={() => setShowCamera(false)}
         />
+      )}
+
+      {/* Settings overlay */}
+      {showSettings && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors['bg/page'], zIndex: 1200, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
+            <button
+              onClick={() => setShowSettings(false)}
+              style={{
+                background: colors['brand/tint'], border: `1px solid ${colors['border/hairline']}`,
+                borderRadius: '10px', padding: '8px 16px', fontSize: '15px', fontWeight: 700,
+                color: colors['brand/primary'], cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Done
+            </button>
+          </div>
+          <Settings onDataImported={handleDataImported} />
+        </div>
       )}
 
       {/* Bottom tab bar */}

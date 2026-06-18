@@ -24,16 +24,21 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
   const contentWidth = pageWidth - margin * 2;
 
   // Helper functions
+  const toDate = (d: Date | string | number): Date => {
+    const result = d instanceof Date ? d : new Date(d);
+    return isNaN(result.getTime()) ? new Date() : result;
+  };
+
   const addText = (text: string, size = 11, bold = false) => {
     pdf.setFontSize(size);
-    pdf.setFont(undefined, bold ? 'bold' : 'normal');
+    pdf.setFont(undefined as unknown as string, bold ? 'bold' : 'normal');
     const lines = pdf.splitTextToSize(text, contentWidth) as string[];
     lines.forEach((line: string) => {
       if (yPosition > pageHeight - 15) {
         pdf.addPage();
         yPosition = 20;
       }
-      (pdf.text as (text: string, x: number, y: number) => jsPDF)(line, margin, yPosition);
+      pdf.text(line, margin, yPosition);
       yPosition += 7;
     });
   };
@@ -50,13 +55,13 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
 
   // Title
   pdf.setFontSize(16);
-  pdf.setFont(undefined, 'bold');
-  (pdf.text as (text: string, x: number, y: number) => jsPDF)('Representative Payee Accounting Statement', margin, yPosition);
+  pdf.setFont(undefined as unknown as string, 'bold');
+  pdf.text('Representative Payee Accounting Statement', margin, yPosition);
   yPosition += 12;
 
   // Account and Date Info
   addText(`Account: ${accountName ?? 'Account'}`, 11, true);
-  addText(`Period: ${formatDate(report.startDate, 'long')} to ${formatDate(report.endDate, 'long')}`, 11);
+  addText(`Period: ${formatDate(toDate(report.startDate), 'long')} to ${formatDate(toDate(report.endDate), 'long')}`, 11);
   addText(`Generated: ${formatDate(new Date(), 'long')}`, 10);
   yPosition += 5;
 
@@ -86,28 +91,27 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
   const col4 = margin + 95;
   const col5 = margin + 120;
 
-  pdf.setFont(undefined, 'bold');
+  pdf.setFont(undefined as unknown as string, 'bold');
   pdf.setFontSize(9);
   if (yPosition > pageHeight - 25) {
     pdf.addPage();
     yPosition = 20;
   }
 
-  const textFunc = pdf.text as (text: string, x: number, y: number) => jsPDF;
-  textFunc('Ref', col1, yPosition);
-  textFunc('Date', col2, yPosition);
-  textFunc('Category', col3, yPosition);
-  textFunc('Description', col4, yPosition);
-  textFunc('Amount', col5, yPosition);
+  pdf.text('Ref', col1, yPosition);
+  pdf.text('Date', col2, yPosition);
+  pdf.text('Category', col3, yPosition);
+  pdf.text('Description', col4, yPosition);
+  pdf.text('Amount', col5, yPosition);
   yPosition += 5;
 
   addLine();
 
-  pdf.setFont(undefined, 'normal');
+  pdf.setFont(undefined as unknown as string, 'normal');
   pdf.setFontSize(9);
 
   // Transactions
-  const sortedTransactions = [...report.transactions].sort((a, b) => a.date.getTime() - b.date.getTime());
+  const sortedTransactions = [...report.transactions].sort((a, b) => toDate(a.date).getTime() - toDate(b.date).getTime());
   sortedTransactions.forEach((tx, index) => {
     if (tx.type === 'expense') {
       if (yPosition > pageHeight - 15) {
@@ -116,15 +120,14 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
       }
 
       const refNum = generateReferenceNumber(index);
-      const dateStr = formatDate(new Date(tx.date));
-      const amount = formatCurrency(tx.amount);
-      const textFunc2 = pdf.text as (text: string, x: number, y: number, opts?: Record<string, unknown>) => jsPDF;
+      const dateStr = formatDate(toDate(tx.date));
+      const amt = formatCurrency(tx.amount);
 
-      textFunc2(refNum, col1, yPosition);
-      textFunc2(dateStr, col2, yPosition);
-      textFunc2(tx.category.substring(0, 12), col3, yPosition);
-      textFunc2(tx.description.substring(0, 20), col4, yPosition);
-      textFunc2(amount, col5, yPosition, { align: 'right' });
+      pdf.text(refNum, col1, yPosition);
+      pdf.text(dateStr, col2, yPosition);
+      pdf.text(tx.category.substring(0, 12), col3, yPosition);
+      pdf.text(tx.description.substring(0, 20), col4, yPosition);
+      pdf.text(amt, col5, yPosition, { align: 'right' });
       yPosition += 5;
     }
   });

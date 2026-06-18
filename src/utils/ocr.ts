@@ -49,11 +49,31 @@ function extractReceiptData(text: string): Partial<OCRResult> {
     data.vendor = vendorLine.trim();
   }
 
-  // Try to extract amount — prefer the largest dollar value (often the total)
+  // Try to extract amount — prefer the value on a "total" line, fall back to largest
   const allAmounts = [...text.matchAll(/\$?\s?(\d+\.\d{2})/g)];
   if (allAmounts.length > 0) {
-    const values = allAmounts.map(m => parseFloat(m[1]));
-    data.amount = Math.max(...values);
+    const totalLineMatch = text.match(/(?:total|subtotal|amount\s*due|balance\s*due|grand\s*total)\s*[:\s]*\$?\s?(\d+\.\d{2})/i);
+    if (totalLineMatch) {
+      data.amount = parseFloat(totalLineMatch[1]);
+    } else {
+      const lines = text.split('\n');
+      let totalAmount: number | null = null;
+      for (const line of lines) {
+        if (/total/i.test(line) && !/sub\s*total/i.test(line)) {
+          const lineAmounts = [...line.matchAll(/\$?\s?(\d+\.\d{2})/g)];
+          if (lineAmounts.length > 0) {
+            totalAmount = parseFloat(lineAmounts[lineAmounts.length - 1][1]);
+            break;
+          }
+        }
+      }
+      if (totalAmount !== null) {
+        data.amount = totalAmount;
+      } else {
+        const values = allAmounts.map(m => parseFloat(m[1]));
+        data.amount = Math.max(...values);
+      }
+    }
   } else {
     const simpleMatch = text.match(/\$?\s?(\d+)/);
     if (simpleMatch) data.amount = parseFloat(simpleMatch[1]);

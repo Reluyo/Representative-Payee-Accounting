@@ -35,7 +35,7 @@ export function LayoutDirectionA() {
 
   const { transactions, fetchTransactions, updateTransaction, deleteTransaction } = useTransactions(currentAccountId);
   const currentAccount = accounts.find(a => a.id === currentAccountId) ?? null;
-  const { generateAndExportPDF, reportLoading } = useReports(currentAccountId, currentAccount?.name ?? '');
+  const { generateAndExportPDF, generateAndExportCSV, reportLoading } = useReports(currentAccountId, currentAccount?.name ?? '');
   const { backupReady, pendingBackup, downloadBackup, dismissBanner, snoozeBanner } = useAutoBackup();
 
   useEffect(() => {
@@ -159,6 +159,15 @@ export function LayoutDirectionA() {
     }
   };
 
+  const handleGenerateCSV = async (startDate: Date, endDate: Date) => {
+    try {
+      await generateAndExportCSV(startDate, endDate, '');
+    } catch (error) {
+      console.error('Failed to generate CSV:', error);
+      alert('Failed to generate CSV. Please try again.');
+    }
+  };
+
   const handleEmail = (startDate: Date, endDate: Date) => {
     // Generate the PDF first, then prompt the user to attach it
     handleGeneratePDF(startDate, endDate).then(() => {
@@ -274,6 +283,7 @@ export function LayoutDirectionA() {
           account={currentAccount}
           transactions={transactions}
           onGeneratePDF={handleGeneratePDF}
+          onGenerateCSV={handleGenerateCSV}
           onEmail={handleEmail}
         />
       )}

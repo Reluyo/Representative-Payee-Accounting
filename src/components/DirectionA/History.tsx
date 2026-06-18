@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Transaction } from '../../types';
 import { colors, radius } from '../../design/tokens';
 import { formatCurrency } from '../../utils/formatting';
@@ -13,15 +13,59 @@ interface HistoryProps {
 
 type FilterTab = 'this-month' | 'all' | 'flagged';
 
+interface PendingDelete {
+  id: number;
+  description: string;
+}
+
 export function History({ accountName, transactions, onEdit, onDelete, onAddReceipt }: HistoryProps) {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('this-month');
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [undoCountdown, setUndoCountdown] = useState(5);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearUndoTimers = useCallback(() => {
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+  }, []);
+
+  const executeDelete = useCallback(() => {
+    if (pendingDelete) {
+      onDelete?.(pendingDelete.id);
+      setPendingDelete(null);
+      clearUndoTimers();
+    }
+  }, [pendingDelete, onDelete, clearUndoTimers]);
+
+  const startDeleteCountdown = useCallback((id: number, description: string) => {
+    clearUndoTimers();
+    setPendingDelete({ id, description });
+    setUndoCountdown(5);
+    countdownRef.current = setInterval(() => {
+      setUndoCountdown(c => c - 1);
+    }, 1000);
+    undoTimerRef.current = setTimeout(() => {
+      onDelete?.(id);
+      setPendingDelete(null);
+      clearUndoTimers();
+    }, 5000);
+  }, [onDelete, clearUndoTimers]);
+
+  const handleUndo = useCallback(() => {
+    clearUndoTimers();
+    setPendingDelete(null);
+  }, [clearUndoTimers]);
+
+  useEffect(() => {
+    return clearUndoTimers;
+  }, [clearUndoTimers]);
 
   const now = new Date();
 
   const filtered = useMemo(() => {
-    let result = [...transactions];
+    let result = transactions.filter(tx => tx.id !== pendingDelete?.id);
 
     if (activeFilter === 'this-month') {
       result = result.filter(tx => {
@@ -45,7 +89,7 @@ export function History({ accountName, transactions, onEdit, onDelete, onAddRece
 
     result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return result;
-  }, [transactions, activeFilter, searchQuery]);
+  }, [transactions, activeFilter, searchQuery, pendingDelete]);
 
   const totalExpenses = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const totalIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -55,17 +99,6 @@ export function History({ accountName, transactions, onEdit, onDelete, onAddRece
     : activeFilter === 'flagged'
     ? 'Missing receipts'
     : 'All time';
-
-  const handleDeleteConfirm = (id: number) => {
-    setConfirmDeleteId(id);
-  };
-
-  const handleDeleteExecute = () => {
-    if (confirmDeleteId !== null) {
-      onDelete?.(confirmDeleteId);
-      setConfirmDeleteId(null);
-    }
-  };
 
   return (
     <div className="pb-32" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh' }}>
@@ -292,7 +325,7 @@ export function History({ accountName, transactions, onEdit, onDelete, onAddRece
                       )}
                       {onDelete && tx.id && (
                         <button
-                          onClick={() => handleDeleteConfirm(tx.id!)}
+                          onClick={() => startDeleteCountdown(tx.id!, tx.description)}
                           style={{
                             padding: '6px 10px',
                             borderRadius: '8px',
@@ -319,52 +352,38 @@ export function History({ accountName, transactions, onEdit, onDelete, onAddRece
         <div style={{ height: '14px' }} />
       </div>
 
-      {/* Delete confirmation overlay */}
-      {confirmDeleteId !== null && (
+      {/* Undo delete toast */}
+      {pendingDelete && (
         <div
           style={{
             position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            bottom: '100px',
+            left: '16px',
+            right: '16px',
+            backgroundColor: colors['ink/primary'],
+            borderRadius: '14px',
+            padding: '14px 16px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '24px',
+            justifyContent: 'space-between',
+            gap: '12px',
+            zIndex: 1100,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
           }}
-          onClick={() => setConfirmDeleteId(null)}
         >
-          <div
-            style={{
-              backgroundColor: colors['bg/page'],
-              borderRadius: '20px',
-              padding: '28px 24px',
-              width: '100%',
-              maxWidth: '340px',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ fontSize: '20px', fontWeight: 800, color: colors['ink/primary'], margin: '0 0 10px 0' }}>
-              Delete entry?
-            </h3>
-            <p style={{ fontSize: '15px', color: colors['ink/muted'], fontWeight: 600, margin: '0 0 24px 0' }}>
-              This will permanently remove the transaction and its receipts. This cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => setConfirmDeleteId(null)}
-                style={{ flex: 1, height: '50px', borderRadius: '12px', border: `2px solid ${colors['border/btn-outline']}`, backgroundColor: colors['surface/card'], color: colors['brand/primary'], fontSize: '16px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteExecute}
-                style={{ flex: 1, height: '50px', borderRadius: '12px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontSize: '16px', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Delete
-              </button>
-            </div>
+          <div style={{ color: '#fff', fontSize: '15px', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            Deleted &ldquo;{pendingDelete.description}&rdquo; ({undoCountdown}s)
           </div>
+          <button
+            onClick={handleUndo}
+            style={{
+              background: 'none', border: 'none', color: colors['brand/accent'],
+              fontSize: '15px', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+              flexShrink: 0, padding: '4px 8px',
+            }}
+          >
+            Undo
+          </button>
         </div>
       )}
     </div>

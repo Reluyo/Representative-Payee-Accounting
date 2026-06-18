@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { generateDateRangeReport } from '../db/queries';
 import { generateReportPDF } from '../utils/pdf';
+import { generateReportCSV, downloadCSV } from '../utils/csv';
 
 export function useReports(accountId: number | null, accountName: string) {
   const [reportLoading, setReportLoading] = useState(false);
@@ -36,10 +37,24 @@ export function useReports(accountId: number | null, accountName: string) {
     }
   }, [generateReport, accountName]);
 
+  const generateAndExportCSV = useCallback(async (startDate: Date, endDate: Date, notes: string = '') => {
+    try {
+      const report = await generateReport(startDate, endDate, notes);
+      if (report) {
+        const csv = generateReportCSV(report, accountName);
+        downloadCSV(csv, `accounting_report_${Date.now()}.csv`);
+      }
+    } catch (error) {
+      console.error('Failed to generate CSV:', error);
+      throw error;
+    }
+  }, [generateReport, accountName]);
+
   return {
     reportLoading,
     reportError,
     generateReport,
     generateAndExportPDF,
+    generateAndExportCSV,
   };
 }

@@ -279,7 +279,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
             alignItems: 'flex-end',
-            zIndex: 999,
+            zIndex: 1050,
           }}
           onClick={cancelPicker}
         >
@@ -289,7 +289,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onEmail }: C
               backgroundColor: colors['bg/page'],
               borderRadius: '24px 24px 0 0',
               padding: `${spacing.screenPadding}px`,
-              paddingBottom: '40px',
+              paddingBottom: '100px',
               maxHeight: '90vh',
               overflowY: 'auto',
             }}

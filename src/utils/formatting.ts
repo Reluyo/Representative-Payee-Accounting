@@ -29,6 +29,10 @@ export function getDaysBetween(startDate: Date, endDate: Date): number {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-export function generateReferenceNumber(index: number): string {
-  return `Ref-${String(index + 1).padStart(3, '0')}`;
+export function generateReferenceNumber(date: Date, serial: number): string {
+  const y = date.getFullYear().toString();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const s = String(serial).padStart(4, '0');
+  return `${y}${m}${d}${s}`;
 }

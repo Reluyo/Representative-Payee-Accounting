@@ -128,7 +128,7 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
         yPosition = 20;
       }
 
-      const refNum = generateReferenceNumber(index);
+      const refNum = generateReferenceNumber(toDate(tx.date), index + 1);
       const dateStr = formatDate(toDate(tx.date));
       const amt = formatCurrency(tx.amount);
 
@@ -153,7 +153,8 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
 
     for (let index = 0; index < report.receiptAppendix.length; index++) {
       const receipt = report.receiptAppendix[index];
-      const refNum = generateReferenceNumber(index);
+      const receiptDate = receipt.uploadedDate ? toDate(receipt.uploadedDate) : new Date();
+      const refNum = generateReferenceNumber(receiptDate, index + 1);
 
       if (yPosition > pageHeight - 50) {
         pdf.addPage();

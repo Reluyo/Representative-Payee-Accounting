@@ -6,7 +6,6 @@ import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
 import { ReceiptsGallery } from '../DirectionA/ReceiptsGallery';
-import { Settings } from '../DirectionA/Settings';
 import { BottomTabBar } from './BottomTabBar';
 import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
 import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
@@ -17,7 +16,7 @@ import { useAutoBackup } from '../../hooks/useAutoBackup';
 import { BackupBanner } from '../UI/BackupBanner';
 import { colors } from '../../design/tokens';
 
-type Tab = 'home' | 'history' | 'receipts' | 'reports' | 'settings';
+type Tab = 'home' | 'history' | 'receipts' | 'reports';
 
 export function LayoutDirectionA() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -90,7 +89,7 @@ export function LayoutDirectionA() {
       try {
         const blob = await fetch(photoData).then(r => r.blob());
         const newReceipt = {
-          referenceNumber: `Receipt-${Date.now()}`,
+          referenceNumber: (() => { const now = new Date(); return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}0001`; })(),
           fileName: `receipt_${Date.now()}.jpg`,
           fileType: blob.type || 'image/jpeg',
           fileSize: blob.size,
@@ -187,20 +186,6 @@ export function LayoutDirectionA() {
     await fetchTransactions();
   };
 
-  const handleDataImported = async () => {
-    // Reload everything after import
-    const [updatedAccounts, updatedCategories] = await Promise.all([
-      getAccounts(),
-      getCategories(),
-    ]);
-    setAccounts(updatedAccounts);
-    setCategories(updatedCategories);
-    if (updatedAccounts.length > 0) {
-      setCurrentAccountId(updatedAccounts[0].id ?? null);
-    }
-    await fetchTransactions();
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: colors['bg/page'] }}>
@@ -246,7 +231,6 @@ export function LayoutDirectionA() {
           recentTransactions={transactions}
           onAddExpense={handleAddExpense}
           onScanReceipt={handleScanReceipt}
-          onSettings={() => setActiveTab('settings')}
           onViewAll={() => setActiveTab('history')}
           onAccountChange={setCurrentAccountId}
         />
@@ -276,10 +260,6 @@ export function LayoutDirectionA() {
           onGeneratePDF={handleGeneratePDF}
           onEmail={handleEmail}
         />
-      )}
-
-      {activeTab === 'settings' && (
-        <Settings onDataImported={handleDataImported} />
       )}
 
       {/* Modals */}

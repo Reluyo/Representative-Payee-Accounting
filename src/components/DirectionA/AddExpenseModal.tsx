@@ -195,7 +195,7 @@ export function AddExpenseModal({
           ? await (async () => {
               const blob = await fetch(photoData).then(r => r.blob());
               return [{
-                referenceNumber: `Receipt-${Date.now()}`,
+                referenceNumber: (() => { const now = new Date(); return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}0001`; })(),
                 fileName: `receipt_${Date.now()}.jpg`,
                 fileType: blob.type || 'image/jpeg',
                 fileSize: blob.size,

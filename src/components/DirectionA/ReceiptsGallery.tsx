@@ -21,7 +21,7 @@ function ReceiptImage({ receipt, alt }: { receipt: Receipt; alt: string }) {
     <img
       src={src}
       alt={alt}
-      style={{ width: '100%', height: '140px', objectFit: 'cover', backgroundColor: colors['bg/page'], display: 'block' }}
+      style={{ width: '100%', height: 'auto', maxHeight: '200px', objectFit: 'contain', backgroundColor: colors['bg/page'], display: 'block' }}
     />
   );
 }

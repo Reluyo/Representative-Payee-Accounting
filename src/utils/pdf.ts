@@ -15,6 +15,15 @@ async function receiptToBase64(receipt: Receipt): Promise<string | null> {
   return null;
 }
 
+function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 export async function generateReportPDF(report: DateRangeReport, accountName: string): Promise<void> {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -86,10 +95,10 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
   addText('TRANSACTION DETAILS', 12, true);
 
   const col1 = margin;
-  const col2 = margin + 35;
-  const col3 = margin + 60;
-  const col4 = margin + 95;
-  const col5 = margin + 120;
+  const col2 = margin + 20;
+  const col3 = margin + 45;
+  const col4 = margin + 85;
+  const col5 = pageWidth - margin;
 
   pdf.setFont(undefined as unknown as string, 'bold');
   pdf.setFontSize(9);
@@ -102,7 +111,7 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
   pdf.text('Date', col2, yPosition);
   pdf.text('Category', col3, yPosition);
   pdf.text('Description', col4, yPosition);
-  pdf.text('Amount', col5, yPosition);
+  pdf.text('Amount', col5, yPosition, { align: 'right' });
   yPosition += 5;
 
   addLine();
@@ -125,8 +134,8 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
 
       pdf.text(refNum, col1, yPosition);
       pdf.text(dateStr, col2, yPosition);
-      pdf.text(tx.category.substring(0, 12), col3, yPosition);
-      pdf.text(tx.description.substring(0, 20), col4, yPosition);
+      pdf.text(tx.category.substring(0, 18), col3, yPosition);
+      pdf.text(tx.description.substring(0, 28), col4, yPosition);
       pdf.text(amt, col5, yPosition, { align: 'right' });
       yPosition += 5;
     }
@@ -163,18 +172,22 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
       }
       yPosition += 5;
 
-      // Try to add receipt image if available (handles both Blob and legacy base64)
       const imgData = await receiptToBase64(receipt);
       if (imgData) {
         try {
-          if (yPosition > pageHeight - 60) {
+          const dims = await getImageDimensions(imgData);
+          const maxW = contentWidth;
+          const maxH = 120;
+          const scale = Math.min(maxW / dims.width, maxH / dims.height);
+          const imgW = dims.width * scale;
+          const imgH = dims.height * scale;
+
+          if (yPosition + imgH > pageHeight - 15) {
             pdf.addPage();
             yPosition = 20;
           }
-          const maxWidth = contentWidth;
-          const maxHeight = 50;
-          pdf.addImage(imgData, 'JPEG', margin, yPosition, maxWidth, maxHeight);
-          yPosition += maxHeight + 5;
+          pdf.addImage(imgData, 'JPEG', margin, yPosition, imgW, imgH);
+          yPosition += imgH + 5;
         } catch (error) {
           console.error('Failed to add image to PDF', error);
         }

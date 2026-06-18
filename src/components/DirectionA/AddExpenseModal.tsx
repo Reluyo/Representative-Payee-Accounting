@@ -305,7 +305,7 @@ export function AddExpenseModal({
 
         {photoData && (
           <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${colors['border/hairline']}` }}>
-            <img src={photoData} alt="Receipt" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '150px', objectFit: 'cover' }} />
+            <img src={photoData} alt="Receipt" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '240px', objectFit: 'contain', backgroundColor: colors['bg/page'] }} />
             <div style={{ padding: '8px 12px' }}>
               <p style={{ fontSize: '12px', fontWeight: 600, color: ocrResult ? '#16a34a' : colors['ink/muted'], margin: 0 }}>
                 {ocrResult ? `Receipt scanned — ${Math.round(ocrResult.confidence * 100)}% confidence` : 'Receipt photo attached'}

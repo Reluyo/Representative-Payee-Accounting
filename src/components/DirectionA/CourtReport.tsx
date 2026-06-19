@@ -8,10 +8,9 @@ interface CourtReportProps {
   transactions: Transaction[];
   onGeneratePDF: (startDate: Date, endDate: Date) => void;
   onGenerateCSV: (startDate: Date, endDate: Date) => void;
-  onEmail: (startDate: Date, endDate: Date) => void;
 }
 
-export function CourtReport({ account, transactions, onGeneratePDF, onGenerateCSV, onEmail }: CourtReportProps) {
+export function CourtReport({ account, transactions, onGeneratePDF, onGenerateCSV }: CourtReportProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -85,12 +84,6 @@ export function CourtReport({ account, transactions, onGeneratePDF, onGenerateCS
     onGenerateCSV(start, end);
   };
 
-  const handleEmail = () => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    onEmail(start, end);
-  };
 
   return (
     <div className="pb-32" style={{ backgroundColor: colors['bg/page'], minHeight: '100vh' }}>
@@ -262,24 +255,6 @@ export function CourtReport({ account, transactions, onGeneratePDF, onGenerateCS
           }}
         >
           Export as CSV
-        </button>
-        <button
-          onClick={handleEmail}
-          style={{
-            width: '100%',
-            height: '58px',
-            border: `2px solid ${colors['border/btn-outline']}`,
-            borderRadius: `${radius.button}px`,
-            backgroundColor: colors['surface/card'],
-            color: colors['brand/primary'],
-            fontSize: '17px',
-            fontWeight: 800,
-            fontFamily: 'inherit',
-            cursor: 'pointer',
-            marginBottom: '12px',
-          }}
-        >
-          Email report
         </button>
 
         {/* Footnote */}

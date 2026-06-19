@@ -168,18 +168,6 @@ export function LayoutDirectionA() {
     }
   };
 
-  const handleEmail = (startDate: Date, endDate: Date) => {
-    // Generate the PDF first, then prompt the user to attach it
-    handleGeneratePDF(startDate, endDate).then(() => {
-      const subject = 'Court Accounting Report - Representative Payee';
-      const body =
-        `Please find the attached accounting report for the representative payee filing.\n\n` +
-        `Period: ${startDate.toLocaleDateString()} – ${endDate.toLocaleDateString()}\n` +
-        `Account: ${currentAccount?.name ?? ''}\n\n` +
-        `The PDF was downloaded to your device. Please attach it to this email before sending.`;
-      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    });
-  };
 
   const handleExpenseSaved = async (amount: number, type: 'income' | 'expense') => {
     if (!currentAccount?.id) return;
@@ -284,7 +272,6 @@ export function LayoutDirectionA() {
           transactions={transactions}
           onGeneratePDF={handleGeneratePDF}
           onGenerateCSV={handleGenerateCSV}
-          onEmail={handleEmail}
         />
       )}
 

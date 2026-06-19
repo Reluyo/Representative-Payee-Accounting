@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { colors, radius } from '../../design/tokens';
 import { scanReceiptImage, type OCRResult } from '../../utils/ocr';
+import { isGeminiConfigured, extractWithGeminiImage } from '../../utils/gemini';
 
 interface ScanReceiptCameraProps {
   onCapture: (photoData: string, ocrResult?: OCRResult) => void;
@@ -65,6 +66,23 @@ export function ScanReceiptCamera({ onCapture, onCancel }: ScanReceiptCameraProp
   const processImage = async (photoData: string) => {
     setScanning(true);
     try {
+      if (isGeminiConfigured()) {
+        try {
+          const geminiResult = await extractWithGeminiImage(photoData);
+          const ocrResult: OCRResult = {
+            text: '',
+            vendor: geminiResult.vendor,
+            amount: geminiResult.amount,
+            date: geminiResult.date,
+            items: geminiResult.items,
+            confidence: 0.95,
+          };
+          onCapture(photoData, ocrResult);
+          return;
+        } catch {
+          // Gemini failed (no tokens, network, etc.) — fall back to OCR
+        }
+      }
       const ocrResult = await scanReceiptImage(photoData);
       onCapture(photoData, ocrResult);
     } catch {

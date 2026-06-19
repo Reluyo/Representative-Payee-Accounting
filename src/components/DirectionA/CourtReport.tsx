@@ -243,7 +243,7 @@ export function CourtReport({ account, transactions, onGeneratePDF, onGenerateCS
             marginBottom: '12px',
           }}
         >
-          Generate court PDF
+          Export as PDF
         </button>
         <button
           onClick={handleGenerateCSV}

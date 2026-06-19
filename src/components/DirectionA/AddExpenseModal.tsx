@@ -97,7 +97,7 @@ export function AddExpenseModal({
     }
   };
 
-  // AI-enhanced extraction: try Gemini text first, fall back to regex
+  // AI-enhanced extraction: try Gemini image first, then text, fall back to regex/OCR
   useEffect(() => {
     if (!ocrResult || isEditing) return;
 
@@ -106,18 +106,21 @@ export function AddExpenseModal({
         setAiStatus('extracting');
         setAiMessage('AI is reading your receipt...');
         try {
-          const result = await extractWithGeminiText(ocrResult.text);
+          // Try image extraction first if we have a photo
+          const result = photoData
+            ? await extractWithGeminiImage(photoData)
+            : await extractWithGeminiText(ocrResult.text);
           applyExtraction(result);
           if (!result.amount && !result.vendor) {
             setAiStatus('low-confidence');
-            setAiMessage('AI couldn\'t extract the details from the text. You can retry with the photo or enter the details manually.');
+            setAiMessage('AI couldn\'t extract the details. You can edit the fields manually.');
           } else {
             setAiStatus('done');
             setAiMessage('AI extracted receipt details');
           }
           return;
         } catch {
-          // Gemini failed — fall back to regex
+          // Gemini failed (no tokens, network, etc.) — fall back to OCR regex
         }
       }
 
@@ -125,12 +128,12 @@ export function AddExpenseModal({
       applyOcrFallback(ocrResult);
 
       if (isLowConfidence(ocrResult)) {
-        if (isGeminiConfigured()) {
-          setAiStatus('low-confidence');
-          setAiMessage('Low scan confidence. You can retry with the photo for better results, or edit the fields manually.');
-        } else {
+        if (!isGeminiConfigured()) {
           setAiStatus('low-confidence');
           setAiMessage('Low scan confidence. Add a Gemini API key in Settings for AI-powered extraction, or edit the fields manually.');
+        } else {
+          setAiStatus('low-confidence');
+          setAiMessage('Low scan confidence. Please edit the fields manually.');
         }
       } else {
         setAiStatus('idle');

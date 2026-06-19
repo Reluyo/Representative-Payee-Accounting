@@ -42,7 +42,7 @@ export function generateReportCSV(report: DateRangeReport, accountName: string):
     const ref = generateReferenceNumber(toDate(tx.date), index + 1);
     const date = formatDate(toDate(tx.date));
     const hasReceipt = tx.receipts && tx.receipts.length > 0 ? 'Yes' : 'No';
-    lines.push(`${ref},${date},${tx.type},${escapeCSV(tx.category)},${escapeCSV(tx.description)},${tx.amount.toFixed(2)},${hasReceipt}`);
+    lines.push(`="${ref}",${date},${tx.type},${escapeCSV(tx.category)},${escapeCSV(tx.description)},${tx.amount.toFixed(2)},${hasReceipt}`);
   });
 
   return lines.join('\n');

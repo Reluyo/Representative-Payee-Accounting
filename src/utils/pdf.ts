@@ -95,9 +95,9 @@ export async function generateReportPDF(report: DateRangeReport, accountName: st
   addText('TRANSACTION DETAILS', 12, true);
 
   const col1 = margin;
-  const col2 = margin + 20;
-  const col3 = margin + 45;
-  const col4 = margin + 85;
+  const col2 = margin + 35;
+  const col3 = margin + 58;
+  const col4 = margin + 95;
   const col5 = pageWidth - margin;
 
   pdf.setFont(undefined as unknown as string, 'bold');

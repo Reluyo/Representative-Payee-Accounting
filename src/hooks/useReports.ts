@@ -3,6 +3,7 @@ import type { DateRangeReport, Receipt, Transaction } from '../types';
 import { generateReportPDF } from '../utils/pdf';
 import { generateReportCSV, downloadCSV } from '../utils/csv';
 import { supabase } from '../db/supabase';
+import { fetchReceiptsForTransactions } from '../db/sync';
 
 function buildReport(
   accountId: number,
@@ -63,39 +64,21 @@ export function useReports(accountId: number | null, accountName: string) {
 
       if (error) throw error;
 
-      const transactions: Transaction[] = [];
-      for (const row of (data ?? [])) {
-        const { data: receiptRows } = await supabase
-          .from('receipts')
-          .select('*')
-          .eq('transaction_id', row.id);
+      const rows = data ?? [];
+      const receiptsByTx = await fetchReceiptsForTransactions(rows.map(r => r.id));
 
-        const receipts: Receipt[] = (receiptRows ?? []).map((r: Record<string, unknown>) => ({
-          id: r.id as number,
-          transactionId: r.transaction_id as number,
-          referenceNumber: r.reference_number as string,
-          fileName: r.file_name as string,
-          fileType: r.file_type as string,
-          fileSize: r.file_size as number,
-          uploadedDate: new Date(r.uploaded_date as string),
-          data: '',
-          originalText: (r.original_text as string) || '',
-          extractedFields: (r.extracted_fields as Record<string, unknown>) || {},
-        }));
-
-        transactions.push({
-          id: row.id,
-          accountId: row.account_id,
-          date: new Date(row.date),
-          amount: Number(row.amount),
-          category: row.category,
-          description: row.description,
-          type: row.type as 'income' | 'expense',
-          status: row.status as 'pending' | 'confirmed',
-          receipts,
-          aiExtractedData: row.ai_extracted_data ?? undefined,
-        });
-      }
+      const transactions: Transaction[] = rows.map(row => ({
+        id: row.id,
+        accountId: row.account_id,
+        date: new Date(row.date),
+        amount: Number(row.amount),
+        category: row.category,
+        description: row.description,
+        type: row.type as 'income' | 'expense',
+        status: row.status as 'pending' | 'confirmed',
+        receipts: receiptsByTx[row.id] ?? [],
+        aiExtractedData: row.ai_extracted_data ?? undefined,
+      }));
 
       return buildReport(accountId, transactions, startDate, endDate, notes);
     } catch (error) {

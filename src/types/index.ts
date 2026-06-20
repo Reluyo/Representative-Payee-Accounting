@@ -25,6 +25,8 @@ export interface Receipt {
   uploadedDate: Date;
   data: string;
   blobData?: Blob;
+  /** Path to the image in the Supabase `receipts` storage bucket, when cloud-backed. */
+  storagePath?: string;
   originalText: string;
   extractedFields: {
     vendor?: string;

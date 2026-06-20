@@ -187,7 +187,7 @@ export function AddExpenseModal({
 
     try {
       if (isEditing && editingTransaction?.id) {
-        await updateTransactionCloud(editingTransaction.id, {
+        await updateTransactionCloud(user!.id, editingTransaction.id, {
           date: new Date(date),
           amount: parsedAmount,
           category: txType === 'income' ? 'Income' : category,

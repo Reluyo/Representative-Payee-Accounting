@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { exportToJSON } from '../db/queries';
+import { exportCloudData } from '../db/sync';
+import { useAuth } from '../contexts/AuthContext';
 
 const BACKUP_INTERVAL_DAYS = 30;
 const LAST_BACKUP_KEY = 'lastBackupDate';
@@ -13,10 +14,13 @@ export interface StoredBackup {
 }
 
 export function useAutoBackup() {
+  const { user } = useAuth();
   const [backupReady, setBackupReady] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<StoredBackup | null>(null);
 
   const checkAndCreateBackup = useCallback(async () => {
+    if (!user) return;
+
     const now = new Date();
 
     // Respect snooze — if snoozed until a future date, skip
@@ -37,7 +41,7 @@ export function useAutoBackup() {
     if (daysSinceLastBackup < BACKUP_INTERVAL_DAYS) return;
 
     try {
-      const data = await exportToJSON();
+      const data = await exportCloudData(user.id);
       const filename = `payee_backup_${now.toISOString().split('T')[0]}.json`;
       const dataStr = JSON.stringify(data, null, 2);
 
@@ -53,7 +57,7 @@ export function useAutoBackup() {
     } catch (error) {
       console.error('Auto-backup failed:', error);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     checkAndCreateBackup();

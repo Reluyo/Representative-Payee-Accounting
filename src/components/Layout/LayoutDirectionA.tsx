@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Account, Category, Transaction } from '../../types';
 import type { OCRResult } from '../../utils/ocr';
-import { defaultCategories } from '../../db/schema';
+import { defaultCategories } from '../../db/defaults';
 import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
@@ -20,7 +20,6 @@ import {
   fetchCategoriesFromCloud,
   fetchTransactionsFromCloud,
   createAccountCloud,
-  updateAccountCloud,
   createTransactionCloud,
   updateTransactionCloud,
   deleteTransactionCloud,
@@ -41,6 +40,7 @@ export function LayoutDirectionA() {
   const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | undefined>();
@@ -61,6 +61,7 @@ export function LayoutDirectionA() {
   useEffect(() => {
     const initialize = async () => {
       try {
+        setInitError(false);
         await initCategoriesCloud(userId, defaultCategories);
         const [loadedAccounts, loadedCategories] = await Promise.all([
           fetchAccountsFromCloud(userId),
@@ -75,6 +76,7 @@ export function LayoutDirectionA() {
         }
       } catch (error) {
         console.error('Failed to initialize:', error);
+        setInitError(true);
       } finally {
         setLoading(false);
       }
@@ -137,7 +139,7 @@ export function LayoutDirectionA() {
             items: ocrResult?.items,
           },
         };
-        await updateTransactionCloud(tx.id!, {
+        await updateTransactionCloud(userId, tx.id!, {
           receipts: [...(tx.receipts || []), newReceipt],
         });
         if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
@@ -167,15 +169,8 @@ export function LayoutDirectionA() {
 
   const handleDeleteTransaction = async (id: number) => {
     if (!currentAccount) return;
-    const tx = transactions.find(t => t.id === id);
-    if (tx) {
-      const delta = tx.type === 'income' ? -tx.amount : tx.amount;
-      await updateAccountCloud(currentAccount.id!, {
-        balance: currentAccount.balance + delta,
-        lastUpdated: new Date(),
-      });
-    }
     await deleteTransactionCloud(id);
+    // Balance is derived from the transaction ledger, so refreshing recomputes it.
     await refreshAccounts();
     if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
   };
@@ -198,15 +193,9 @@ export function LayoutDirectionA() {
     }
   };
 
-  const handleExpenseSaved = async (amount: number, type: 'income' | 'expense') => {
+  const handleExpenseSaved = async () => {
     if (!currentAccount?.id) return;
-
-    const delta = type === 'income' ? amount : -amount;
-    await updateAccountCloud(currentAccount.id, {
-      balance: currentAccount.balance + delta,
-      lastUpdated: new Date(),
-    });
-
+    // Balance is derived from the transaction ledger; refreshing recomputes it.
     await refreshAccounts();
     if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
   };
@@ -227,6 +216,29 @@ export function LayoutDirectionA() {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: colors['bg/page'] }}>
         <p style={{ color: colors['ink/muted'] }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (initError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen" style={{ backgroundColor: colors['bg/page'], padding: '24px', textAlign: 'center' }}>
+        <p style={{ color: colors['ink/primary'], fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>
+          Couldn't load your data
+        </p>
+        <p style={{ color: colors['ink/muted'], fontSize: '15px', fontWeight: 600, marginBottom: '20px' }}>
+          Please check your internet connection and try again.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            backgroundColor: colors['brand/primary'], color: '#fff', border: 'none',
+            borderRadius: '14px', padding: '12px 28px', fontSize: '16px', fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          Retry
+        </button>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { colors, spacing, radius } from '../../design/tokens';
-import { exportToJSON, importFromJSON, clearAllData } from '../../db/queries';
+import { exportCloudData, importCloudData, clearCloudData } from '../../db/sync';
 import { getGeminiApiKey, setGeminiApiKey } from '../../utils/gemini';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -21,9 +21,13 @@ export function Settings({ onDataImported }: SettingsProps) {
     setTimeout(() => setKeySaved(false), 2000);
   };
 
+  const [exporting, setExporting] = useState(false);
+
   const handleExport = async () => {
+    if (!user) return;
+    setExporting(true);
     try {
-      const data = await exportToJSON();
+      const data = await exportCloudData(user.id);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -34,6 +38,8 @@ export function Settings({ onDataImported }: SettingsProps) {
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export data');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -55,9 +61,10 @@ export function Settings({ onDataImported }: SettingsProps) {
     }
 
     try {
+      if (!user) throw new Error('Not signed in');
       const text = await file.text();
       const data = JSON.parse(text);
-      await importFromJSON(data);
+      await importCloudData(user.id, data);
       alert('Data restored successfully.');
       onDataImported();
     } catch (error) {
@@ -82,10 +89,11 @@ export function Settings({ onDataImported }: SettingsProps) {
       if (!confirmed) return;
 
       try {
+        if (!user) throw new Error('Not signed in');
         const text = await file.text();
         const data = JSON.parse(text);
-        await clearAllData();
-        await importFromJSON(data);
+        await clearCloudData(user.id);
+        await importCloudData(user.id, data);
         alert('All data replaced successfully.');
         onDataImported();
       } catch (error) {
@@ -122,6 +130,7 @@ export function Settings({ onDataImported }: SettingsProps) {
 
         <button
           onClick={handleExport}
+          disabled={exporting}
           style={{
             width: '100%',
             padding: '14px 16px',
@@ -131,12 +140,13 @@ export function Settings({ onDataImported }: SettingsProps) {
             borderRadius: '16px',
             fontSize: '16px',
             fontWeight: 700,
-            cursor: 'pointer',
+            cursor: exporting ? 'wait' : 'pointer',
+            opacity: exporting ? 0.7 : 1,
             marginBottom: '12px',
             boxShadow: '0 6px 16px rgba(47, 98, 217, 0.28)',
           }}
         >
-          Export Backup
+          {exporting ? 'Preparing backup…' : 'Export Backup'}
         </button>
 
         <button
@@ -183,7 +193,7 @@ export function Settings({ onDataImported }: SettingsProps) {
         />
 
         <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/disabled'], margin: '16px 0 0 0', textAlign: 'center' }}>
-          All data is stored on your device. Export your backup regularly and save it to a cloud drive or email it to yourself.
+          Your data is securely synced to the cloud and available on all your devices. Exporting downloads a full copy (including receipt images) you can keep as an offline backup.
         </p>
       </div>
 

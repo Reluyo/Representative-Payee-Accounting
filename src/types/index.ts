@@ -2,6 +2,10 @@ export interface Account {
   id?: number;
   name: string;
   type: 'SSA' | 'Retirement' | 'Other';
+  /** Immutable starting balance set when the account is created. */
+  openingBalance: number;
+  /** Current balance, derived as openingBalance + net of all transactions.
+   *  Read-only from the app's perspective — it is never written directly. */
   balance: number;
   currency: string;
   createdDate: Date;
@@ -25,6 +29,8 @@ export interface Receipt {
   uploadedDate: Date;
   data: string;
   blobData?: Blob;
+  /** Path to the image in the Supabase `receipts` storage bucket, when cloud-backed. */
+  storagePath?: string;
   originalText: string;
   extractedFields: {
     vendor?: string;

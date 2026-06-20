@@ -19,7 +19,7 @@ interface AddExpenseModalProps {
   ocrResult?: OCRResult;
   editingTransaction?: Transaction;
   onClose: () => void;
-  onSaved: (amount: number, type: 'income' | 'expense') => void;
+  onSaved: () => void;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -187,7 +187,7 @@ export function AddExpenseModal({
 
     try {
       if (isEditing && editingTransaction?.id) {
-        await updateTransactionCloud(editingTransaction.id, {
+        await updateTransactionCloud(user!.id, editingTransaction.id, {
           date: new Date(date),
           amount: parsedAmount,
           category: txType === 'income' ? 'Income' : category,
@@ -238,7 +238,7 @@ export function AddExpenseModal({
         });
       }
 
-      onSaved(parsedAmount, txType);
+      onSaved();
       onClose();
     } catch (err) {
       setError('Failed to save. Please try again.');

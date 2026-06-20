@@ -33,10 +33,11 @@ export function AccountSetupDirectionA({ onAccountCreated }: AccountSetupProps) 
     setLoading(true);
 
     try {
+      const openingBalance = parseFloat(balance);
       const id = await createAccountCloud(user!.id, {
         name: name.trim(),
         type,
-        balance: parseFloat(balance),
+        openingBalance,
         currency: 'USD',
         createdDate: new Date(),
         lastUpdated: new Date(),
@@ -46,7 +47,9 @@ export function AccountSetupDirectionA({ onAccountCreated }: AccountSetupProps) 
         id,
         name: name.trim(),
         type,
-        balance: parseFloat(balance),
+        openingBalance,
+        // A brand-new account has no transactions yet, so balance equals opening.
+        balance: openingBalance,
         currency: 'USD',
         createdDate: new Date(),
         lastUpdated: new Date(),

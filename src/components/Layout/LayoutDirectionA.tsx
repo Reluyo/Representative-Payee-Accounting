@@ -20,7 +20,6 @@ import {
   fetchCategoriesFromCloud,
   fetchTransactionsFromCloud,
   createAccountCloud,
-  updateAccountCloud,
   createTransactionCloud,
   updateTransactionCloud,
   deleteTransactionCloud,
@@ -170,15 +169,8 @@ export function LayoutDirectionA() {
 
   const handleDeleteTransaction = async (id: number) => {
     if (!currentAccount) return;
-    const tx = transactions.find(t => t.id === id);
-    if (tx) {
-      const delta = tx.type === 'income' ? -tx.amount : tx.amount;
-      await updateAccountCloud(currentAccount.id!, {
-        balance: currentAccount.balance + delta,
-        lastUpdated: new Date(),
-      });
-    }
     await deleteTransactionCloud(id);
+    // Balance is derived from the transaction ledger, so refreshing recomputes it.
     await refreshAccounts();
     if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
   };
@@ -201,15 +193,9 @@ export function LayoutDirectionA() {
     }
   };
 
-  const handleExpenseSaved = async (amount: number, type: 'income' | 'expense') => {
+  const handleExpenseSaved = async () => {
     if (!currentAccount?.id) return;
-
-    const delta = type === 'income' ? amount : -amount;
-    await updateAccountCloud(currentAccount.id, {
-      balance: currentAccount.balance + delta,
-      lastUpdated: new Date(),
-    });
-
+    // Balance is derived from the transaction ledger; refreshing recomputes it.
     await refreshAccounts();
     if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
   };

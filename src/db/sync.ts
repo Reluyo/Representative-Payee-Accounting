@@ -1,86 +1,6 @@
 import { supabase } from './supabase';
 import type { Account, Category, Transaction, Receipt } from '../types';
 
-export async function syncAccountsToCloud(userId: string, accounts: Account[]) {
-  for (const account of accounts) {
-    const { data: existing } = await supabase
-      .from('accounts')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('name', account.name)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase.from('accounts').update({
-        balance: account.balance,
-        type: account.type,
-        currency: account.currency,
-        last_updated: new Date().toISOString(),
-      }).eq('id', existing.id);
-    } else {
-      await supabase.from('accounts').insert({
-        user_id: userId,
-        name: account.name,
-        type: account.type,
-        balance: account.balance,
-        currency: account.currency,
-        created_date: account.createdDate instanceof Date ? account.createdDate.toISOString() : account.createdDate,
-        last_updated: new Date().toISOString(),
-      });
-    }
-  }
-}
-
-export async function syncCategoriesToCloud(userId: string, categories: Category[]) {
-  const { data: existing } = await supabase
-    .from('categories')
-    .select('name')
-    .eq('user_id', userId);
-
-  const existingNames = new Set((existing ?? []).map(c => c.name));
-  const toInsert = categories
-    .filter(c => !existingNames.has(c.name))
-    .map(c => ({ user_id: userId, name: c.name, type: c.type, color: c.color }));
-
-  if (toInsert.length > 0) {
-    await supabase.from('categories').insert(toInsert);
-  }
-}
-
-export async function syncTransactionsToCloud(userId: string, cloudAccountId: number, transactions: Transaction[]) {
-  for (const tx of transactions) {
-    const { data: existing } = await supabase
-      .from('transactions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('account_id', cloudAccountId)
-      .eq('date', (tx.date instanceof Date ? tx.date : new Date(tx.date)).toISOString())
-      .eq('amount', tx.amount)
-      .eq('description', tx.description)
-      .maybeSingle();
-
-    if (!existing) {
-      const { data: inserted } = await supabase.from('transactions').insert({
-        user_id: userId,
-        account_id: cloudAccountId,
-        date: (tx.date instanceof Date ? tx.date : new Date(tx.date)).toISOString(),
-        amount: tx.amount,
-        category: tx.category,
-        description: tx.description,
-        type: tx.type,
-        status: tx.status,
-        ai_extracted_data: tx.aiExtractedData ?? null,
-      }).select('id').single();
-
-      if (inserted && tx.receipts?.length > 0) {
-        for (const receipt of tx.receipts) {
-          await syncReceiptToCloud(userId, inserted.id, receipt);
-        }
-      }
-    }
-  }
-}
-
 const RECEIPT_BUCKET = 'receipts';
 // Signed URLs are short-lived; one hour comfortably covers a viewing/report session.
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
@@ -168,19 +88,26 @@ async function syncReceiptToCloud(userId: string, cloudTxId: number, receipt: Re
 // --- Cloud → Local fetching ---
 
 export async function fetchAccountsFromCloud(userId: string): Promise<Account[]> {
-  const { data, error } = await supabase
-    .from('accounts')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_date');
+  // Balances are derived (opening_balance + net transactions) via the
+  // account_balances view rather than stored, so fetch both and merge.
+  const [accountsRes, balancesRes] = await Promise.all([
+    supabase.from('accounts').select('*').eq('user_id', userId).order('created_date'),
+    supabase.from('account_balances').select('*'),
+  ]);
 
+  const { data, error } = accountsRes;
   if (error || !data) return [];
+
+  const balanceById = new Map<number, number>(
+    (balancesRes.data ?? []).map(b => [b.account_id, Number(b.balance)]),
+  );
 
   return data.map(row => ({
     id: row.id,
     name: row.name,
     type: row.type as Account['type'],
-    balance: Number(row.balance),
+    openingBalance: Number(row.opening_balance),
+    balance: balanceById.get(row.id) ?? Number(row.opening_balance),
     currency: row.currency,
     createdDate: new Date(row.created_date),
     lastUpdated: new Date(row.last_updated),
@@ -273,12 +200,12 @@ export async function fetchTransactionsFromCloud(userId: string, cloudAccountId:
 
 // --- Cloud CRUD (used when logged in) ---
 
-export async function createAccountCloud(userId: string, account: Omit<Account, 'id'>): Promise<number> {
+export async function createAccountCloud(userId: string, account: Omit<Account, 'id' | 'balance'>): Promise<number> {
   const { data, error } = await supabase.from('accounts').insert({
     user_id: userId,
     name: account.name,
     type: account.type,
-    balance: account.balance,
+    opening_balance: account.openingBalance,
     currency: account.currency,
     created_date: account.createdDate instanceof Date ? account.createdDate.toISOString() : account.createdDate,
     last_updated: account.lastUpdated instanceof Date ? account.lastUpdated.toISOString() : account.lastUpdated,
@@ -286,17 +213,6 @@ export async function createAccountCloud(userId: string, account: Omit<Account, 
 
   if (error || !data) throw new Error(error?.message ?? 'Failed to create account');
   return data.id;
-}
-
-export async function updateAccountCloud(id: number, updates: Partial<Account>) {
-  const mapped: Record<string, unknown> = {};
-  if (updates.name !== undefined) mapped.name = updates.name;
-  if (updates.type !== undefined) mapped.type = updates.type;
-  if (updates.balance !== undefined) mapped.balance = updates.balance;
-  if (updates.currency !== undefined) mapped.currency = updates.currency;
-  if (updates.lastUpdated !== undefined) mapped.last_updated = updates.lastUpdated instanceof Date ? updates.lastUpdated.toISOString() : updates.lastUpdated;
-
-  await supabase.from('accounts').update(mapped).eq('id', id);
 }
 
 export async function deleteAccountCloud(id: number) {
@@ -467,7 +383,7 @@ export async function importCloudData(userId: string, data: any) {
     const newId = await createAccountCloud(userId, {
       name: a.name,
       type: a.type,
-      balance: Number(a.balance),
+      openingBalance: Number(a.opening_balance),
       currency: a.currency,
       createdDate: new Date(a.created_date),
       lastUpdated: new Date(a.last_updated),

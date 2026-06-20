@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import type { Account } from '../../types';
 import { colors, spacing } from '../../design/tokens';
-import { createAccount } from '../../db/queries';
+import { useAuth } from '../../contexts/AuthContext';
+import { createAccountCloud } from '../../db/sync';
 
 interface AccountSetupProps {
   onAccountCreated: (account: Account) => void;
 }
 
 export function AccountSetupDirectionA({ onAccountCreated }: AccountSetupProps) {
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [type, setType] = useState<'SSA' | 'Retirement' | 'Other'>('SSA');
   const [balance, setBalance] = useState('');
@@ -31,7 +33,7 @@ export function AccountSetupDirectionA({ onAccountCreated }: AccountSetupProps) 
     setLoading(true);
 
     try {
-      const id = await createAccount({
+      const id = await createAccountCloud(user!.id, {
         name: name.trim(),
         type,
         balance: parseFloat(balance),

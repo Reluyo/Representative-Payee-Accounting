@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import type { Account, Category, Transaction } from '../../types';
 import type { OCRResult } from '../../utils/ocr';
 import { colors, spacing, radius } from '../../design/tokens';
-import { createTransaction, updateTransaction } from '../../db/queries';
+import { useAuth } from '../../contexts/AuthContext';
+import { createTransactionCloud, updateTransactionCloud } from '../../db/sync';
 import {
   isGeminiConfigured,
   isLowConfidence,
@@ -50,6 +51,7 @@ export function AddExpenseModal({
   onClose,
   onSaved,
 }: AddExpenseModalProps) {
+  const { user } = useAuth();
   const isEditing = !!editingTransaction;
 
   const [txType, setTxType] = useState<'income' | 'expense'>(
@@ -185,7 +187,7 @@ export function AddExpenseModal({
 
     try {
       if (isEditing && editingTransaction?.id) {
-        await updateTransaction(editingTransaction.id, {
+        await updateTransactionCloud(editingTransaction.id, {
           date: new Date(date),
           amount: parsedAmount,
           category: txType === 'income' ? 'Income' : category,
@@ -216,7 +218,7 @@ export function AddExpenseModal({
             })()
           : [];
 
-        await createTransaction({
+        await createTransactionCloud(user!.id, {
           accountId: account.id!,
           date: new Date(date),
           amount: parsedAmount,

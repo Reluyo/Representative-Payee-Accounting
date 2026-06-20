@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Account, Category, Transaction } from '../../types';
 import type { OCRResult } from '../../utils/ocr';
-import { getAccounts, getCategories, initializeDB, updateAccount } from '../../db/queries';
+import { defaultCategories } from '../../db/schema';
 import { Dashboard } from '../DirectionA/Dashboard';
 import { History } from '../DirectionA/History';
 import { CourtReport } from '../DirectionA/CourtReport';
@@ -11,17 +11,33 @@ import { BottomTabBar } from './BottomTabBar';
 import { AddExpenseModal } from '../DirectionA/AddExpenseModal';
 import { ScanReceiptCamera } from '../DirectionA/ScanReceiptCamera';
 import { AccountSetupDirectionA } from '../Accounts/AccountSetupDirectionA';
-import { useTransactions } from '../../hooks/useTransactions';
 import { useReports } from '../../hooks/useReports';
 import { useAutoBackup } from '../../hooks/useAutoBackup';
 import { BackupBanner } from '../UI/BackupBanner';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  fetchAccountsFromCloud,
+  fetchCategoriesFromCloud,
+  fetchTransactionsFromCloud,
+  createAccountCloud,
+  updateAccountCloud,
+  createTransactionCloud,
+  updateTransactionCloud,
+  deleteTransactionCloud,
+  deleteAccountCloud,
+  initCategoriesCloud,
+} from '../../db/sync';
 import { colors } from '../../design/tokens';
 
 type Tab = 'home' | 'history' | 'receipts' | 'reports';
 
 export function LayoutDirectionA() {
+  const { user } = useAuth();
+  const userId = user!.id;
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currentAccountId, setCurrentAccountId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(true);
@@ -33,18 +49,22 @@ export function LayoutDirectionA() {
   const [showSettings, setShowSettings] = useState(false);
   const [addReceiptToTransaction, setAddReceiptToTransaction] = useState<Transaction | undefined>();
 
-  const { transactions, fetchTransactions, updateTransaction, deleteTransaction } = useTransactions(currentAccountId);
   const currentAccount = accounts.find(a => a.id === currentAccountId) ?? null;
   const { generateAndExportPDF, generateAndExportCSV, reportLoading } = useReports(currentAccountId, currentAccount?.name ?? '');
   const { backupReady, pendingBackup, downloadBackup, dismissBanner, snoozeBanner } = useAutoBackup();
 
+  const fetchTransactionsForAccount = useCallback(async (accountId: number) => {
+    const txs = await fetchTransactionsFromCloud(userId, accountId);
+    setTransactions(txs);
+  }, [userId]);
+
   useEffect(() => {
     const initialize = async () => {
       try {
-        await initializeDB();
+        await initCategoriesCloud(userId, defaultCategories);
         const [loadedAccounts, loadedCategories] = await Promise.all([
-          getAccounts(),
-          getCategories(),
+          fetchAccountsFromCloud(userId),
+          fetchCategoriesFromCloud(userId),
         ]);
 
         setAccounts(loadedAccounts);
@@ -61,10 +81,21 @@ export function LayoutDirectionA() {
     };
 
     initialize();
-  }, []);
+  }, [userId]);
+
+  useEffect(() => {
+    if (currentAccountId) {
+      fetchTransactionsForAccount(currentAccountId);
+    }
+  }, [currentAccountId, fetchTransactionsForAccount]);
+
+  const refreshAccounts = async () => {
+    const updated = await fetchAccountsFromCloud(userId);
+    setAccounts(updated);
+  };
 
   const handleAccountCreated = async () => {
-    const newAccounts = await getAccounts();
+    const newAccounts = await fetchAccountsFromCloud(userId);
     setAccounts(newAccounts);
     if (newAccounts.length === 1) {
       setCurrentAccountId(newAccounts[0].id ?? null);
@@ -106,10 +137,10 @@ export function LayoutDirectionA() {
             items: ocrResult?.items,
           },
         };
-        await updateTransaction(tx.id!, {
+        await updateTransactionCloud(tx.id!, {
           receipts: [...(tx.receipts || []), newReceipt],
         });
-        await fetchTransactions();
+        if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
       } catch (err) {
         console.error('Failed to add receipt:', err);
       }
@@ -136,18 +167,17 @@ export function LayoutDirectionA() {
 
   const handleDeleteTransaction = async (id: number) => {
     if (!currentAccount) return;
-    // Find the transaction to reverse its effect on balance
     const tx = transactions.find(t => t.id === id);
     if (tx) {
       const delta = tx.type === 'income' ? -tx.amount : tx.amount;
-      await updateAccount(currentAccount.id!, {
+      await updateAccountCloud(currentAccount.id!, {
         balance: currentAccount.balance + delta,
         lastUpdated: new Date(),
       });
-      const updatedAccounts = await getAccounts();
-      setAccounts(updatedAccounts);
     }
-    await deleteTransaction(id);
+    await deleteTransactionCloud(id);
+    await refreshAccounts();
+    if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
   };
 
   const handleGeneratePDF = async (startDate: Date, endDate: Date) => {
@@ -168,34 +198,29 @@ export function LayoutDirectionA() {
     }
   };
 
-
   const handleExpenseSaved = async (amount: number, type: 'income' | 'expense') => {
     if (!currentAccount?.id) return;
 
-    // Update the account balance
     const delta = type === 'income' ? amount : -amount;
-    await updateAccount(currentAccount.id, {
+    await updateAccountCloud(currentAccount.id, {
       balance: currentAccount.balance + delta,
       lastUpdated: new Date(),
     });
 
-    const updatedAccounts = await getAccounts();
-    setAccounts(updatedAccounts);
-    // Refetch transactions to pick up the new/edited entry
-    await fetchTransactions();
+    await refreshAccounts();
+    if (currentAccountId) await fetchTransactionsForAccount(currentAccountId);
   };
 
   const handleDataImported = async () => {
     const [updatedAccounts, updatedCategories] = await Promise.all([
-      getAccounts(),
-      getCategories(),
+      fetchAccountsFromCloud(userId),
+      fetchCategoriesFromCloud(userId),
     ]);
     setAccounts(updatedAccounts);
     setCategories(updatedCategories);
     if (updatedAccounts.length > 0) {
       setCurrentAccountId(updatedAccounts[0].id ?? null);
     }
-    await fetchTransactions();
   };
 
   if (loading) {
@@ -212,7 +237,6 @@ export function LayoutDirectionA() {
 
   return (
     <div style={{ backgroundColor: colors['bg/page'], minHeight: '100vh', paddingBottom: '120px' }}>
-      {/* Auto-backup banner */}
       {backupReady && pendingBackup && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, padding: '16px 22px' }}>
           <BackupBanner
@@ -224,7 +248,6 @@ export function LayoutDirectionA() {
         </div>
       )}
 
-      {/* PDF generation loading overlay */}
       {reportLoading && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '28px 32px', textAlign: 'center' }}>
@@ -234,7 +257,6 @@ export function LayoutDirectionA() {
         </div>
       )}
 
-      {/* Tab content */}
       {activeTab === 'home' && currentAccount && (
         <Dashboard
           account={currentAccount}
@@ -275,7 +297,6 @@ export function LayoutDirectionA() {
         />
       )}
 
-      {/* Modals */}
       {showAddExpense && currentAccount && (
         <AddExpenseModal
           categories={categories}
@@ -300,7 +321,6 @@ export function LayoutDirectionA() {
         />
       )}
 
-      {/* Settings overlay */}
       {showSettings && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors['bg/page'], zIndex: 1200, overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
@@ -319,7 +339,6 @@ export function LayoutDirectionA() {
         </div>
       )}
 
-      {/* Bottom tab bar */}
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );

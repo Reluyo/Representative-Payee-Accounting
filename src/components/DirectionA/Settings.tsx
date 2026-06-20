@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react';
-import { colors, spacing } from '../../design/tokens';
+import { colors, spacing, radius } from '../../design/tokens';
 import { exportToJSON, importFromJSON, clearAllData } from '../../db/queries';
 import { getGeminiApiKey, setGeminiApiKey } from '../../utils/gemini';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SettingsProps {
   onDataImported: () => void;
 }
 
 export function Settings({ onDataImported }: SettingsProps) {
+  const { user, signOut } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [apiKey, setApiKey] = useState(getGeminiApiKey);
   const [showKey, setShowKey] = useState(false);
@@ -284,9 +286,34 @@ export function Settings({ onDataImported }: SettingsProps) {
           Version 1.0.0
         </p>
         <p style={{ fontSize: '14px', fontWeight: 600, color: colors['ink/muted'], margin: '16px 0 0 0', lineHeight: 1.6 }}>
-          Track and report spending for court filings. All your data stays on your device — no cloud, no tracking.
+          Track and report spending for court filings. Your data syncs securely across devices.
         </p>
+        {user && (
+          <p style={{ fontSize: '13px', fontWeight: 600, color: colors['ink/disabled'], margin: '8px 0 0 0' }}>
+            Signed in as {user.email}
+          </p>
+        )}
       </div>
+
+      {/* Sign out */}
+      <button
+        onClick={signOut}
+        style={{
+          width: '100%',
+          padding: '16px',
+          marginTop: '16px',
+          backgroundColor: colors['surface/card'],
+          color: '#ef4444',
+          border: `1px solid ${colors['border/hairline']}`,
+          borderRadius: `${radius.button}px`,
+          fontSize: '16px',
+          fontWeight: 800,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        Sign out
+      </button>
     </div>
   );
 }

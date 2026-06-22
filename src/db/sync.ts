@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Account, Category, Transaction, Receipt } from '../types';
+import { compressImage } from '../utils/compressImage';
 
 const RECEIPT_BUCKET = 'receipts';
 // Signed URLs are short-lived; one hour comfortably covers a viewing/report session.
@@ -19,10 +20,12 @@ async function uploadReceiptImage(userId: string, receipt: Receipt): Promise<str
 
   if (!fileBody || fileBody.size === 0) return null;
 
+  fileBody = await compressImage(fileBody);
+
   const fileName = `${userId}/${Date.now()}_${receipt.fileName}`;
   const { error } = await supabase.storage
     .from(RECEIPT_BUCKET)
-    .upload(fileName, fileBody, { contentType: receipt.fileType || 'image/jpeg' });
+    .upload(fileName, fileBody, { contentType: fileBody.type || 'image/jpeg' });
 
   if (error) {
     throw new Error(`Failed to upload receipt image: ${error.message}`);
